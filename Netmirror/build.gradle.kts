@@ -28,5 +28,5 @@ cloudstream {
         "TvSeries"
     )
 
-    iconUrl = "https://github.com/Sushan64/NetMirror-Extension/raw/refs/heads/master/Netmirror/icon.jpeg"
+    iconUrl = "https://raw.githubusercontent.com/Sushan64/NetMirror-Extension/refs/heads/master/Netmirror/logo.jpeg"
 }
