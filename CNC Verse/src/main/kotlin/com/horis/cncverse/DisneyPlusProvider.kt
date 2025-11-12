@@ -117,7 +117,8 @@ class DisneyPlusProvider : MainAPI() {
             ?.map { it.trim() }
             ?.filter { it.isNotEmpty() }
             ?: emptyList())
-        val score = data.match?.replace("IMDb ", "")?.toFloatOrNull()?.times(1000)?.toInt()
+        val scoreInt = data.match?.replace("IMDb ", "")?.toFloatOrNull()?.times(1000)?.toInt()
+        val score = scoreInt?.let { Score(rating = it, source = "IMDb") }
         val runTime = convertRuntimeToMinutes(data.runtime.toString())
 
         if (data.episodes.first() == null) {
