@@ -144,8 +144,6 @@ class NetflixMirrorProvider : MainAPI() {
             ?: emptyList())
         
         // FIXED: Use new score API instead of deprecated toRatingInt()
-        val scoreInt = data.match?.replace("IMDb ", "")?.toFloatOrNull()?.times(1000)?.toInt()
-        val score = scoreInt?.let { Score(rating = it, source = "IMDb") }
         val runTime = convertRuntimeToMinutes(data.runtime.toString())
 
         if (data.episodes.first() == null) {
@@ -183,7 +181,6 @@ class NetflixMirrorProvider : MainAPI() {
             tags = genre
             actors = cast
             // FIXED: Use new score property instead of deprecated rating
-            this.score = score
             this.duration = runTime
         }
     }
