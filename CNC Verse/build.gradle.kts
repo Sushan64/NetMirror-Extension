@@ -8,6 +8,7 @@ android {
 }
 
 cloudstream {
+    setName("NetMirror")
     language = "ta"
     // All of these properties are optional, you can safely remove them
 
