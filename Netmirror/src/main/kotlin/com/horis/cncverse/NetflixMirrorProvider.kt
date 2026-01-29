@@ -59,7 +59,7 @@ class NetflixMirrorProvider : MainAPI() {
             "$mainUrl/home",
             headers = headers,
             cookies = cookies,
-            referer = $newUrl,
+            referer = newUrl,
         ).document
         val items = document.select(".tray-container, #top10").map {
             it.toHomePageList()
