@@ -52,11 +52,12 @@ class NetflixMirrorProvider : MainAPI() {
         cookie_value = if(cookie_value.isEmpty()) bypass(mainUrl) else cookie_value
         val cookies = mapOf(
             "t_hash_t" to cookie_value,
+            "user_token" to "233123f803cf02184bf6c67e149cdd50",
             "ott" to "nf",
             "hd" to "on"
         )
         val document = app.get(
-            "$mainUrl/home",
+            "$newUrl/home",
             headers = headers,
             cookies = cookies,
             referer = newUrl,
@@ -126,7 +127,7 @@ class NetflixMirrorProvider : MainAPI() {
         val data = app.get(
             "https://net51.cc/post.php?id=$id&t=${APIHolder.unixTime}",
             headers,
-            referer = "https://net51.cc",
+            referer = "$mainUrl/tv/home",
             cookies = cookies
         ).parsed<PostData>()
 
