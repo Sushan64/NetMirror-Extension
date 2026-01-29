@@ -62,7 +62,7 @@ class NetflixMirrorProvider : MainAPI() {
             cookies = cookies,
             referer = newUrl,
         ).document
-        val items = document.select(".tray-container, #top10").map {
+        val items = document.select(".tray-container, #top10, .lolomoRow").map {
             it.toHomePageList()
         }
         return newHomePageResponse(items, false)
