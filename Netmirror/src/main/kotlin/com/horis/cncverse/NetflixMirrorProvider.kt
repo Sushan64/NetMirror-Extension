@@ -58,7 +58,7 @@ class NetflixMirrorProvider : MainAPI() {
     private fun Element.toHomePageList(): HomePageList {  
         val name = select("h2, span").text()  
         //article, .top10-post  
-        val items = select("boxart-container").mapNotNull {  
+        val items = select("boxart-image").mapNotNull {  
             it.toSearchResult()  
         }  
         return HomePageList(name, items)  
