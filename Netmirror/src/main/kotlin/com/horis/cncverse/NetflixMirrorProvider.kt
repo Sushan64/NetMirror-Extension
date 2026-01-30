@@ -3,7 +3,7 @@ package com.horis.cncverse
 import com.horis.cncverse.entities.EpisodesData  
 import com.horis.cncverse.entities.PlayList  
 import com.horis.cncverse.entities.PostData  
-import com.horis.cncverse.entities.SearchData  
+import com.horis.cncverse.entities.SearchData 
 import com.lagradost.cloudstream3.*  
 import com.lagradost.cloudstream3.utils.*  
 import com.lagradost.cloudstream3.utils.AppUtils.toJson  
@@ -19,7 +19,7 @@ import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.APIHolder.unixTime  
 
 
-class NetflixProvider : MainAPI() {
+class NetflixMirrorProvider : MainAPI() {
     override val supportedTypes = setOf(
         TvType.Movie,
         TvType.TvSeries,
@@ -131,7 +131,7 @@ class NetflixProvider : MainAPI() {
                 this.posterUrl = "https://imgcdn.kim/poster/v/${it.id}.jpg"
                 posterHeaders = mapOf("Referer" to "$mainUrl/home")
             }
-        }
+        } ?: emptyList()
 
         if (data.episodes.first() == null) {
             episodes.add(newEpisode(LoadData(title, id)) {
