@@ -49,7 +49,7 @@ class NetflixMirrorProvider : MainAPI() {
             referer = "$mainUrl/",  
         ).document  
         // .tray-container, #top10,   
-        val items = document.select(".tray-container, #top10, .lolomoRow").map {  
+        val items = document.select(".lolomoRow").map {  
             it.toHomePageList()  
         }  
         return newHomePageResponse(items, false)  
