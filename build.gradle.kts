@@ -54,7 +54,7 @@ subprojects {
 
     cloudstream {
         setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/Sushan64/NetMirror-Extension.git")
-        authors = listOf("NivinCNC")
+        authors = listOf("Sushan64")
     }
 
     android {

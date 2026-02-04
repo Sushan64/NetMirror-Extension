@@ -25,8 +25,8 @@ class NetflixMirrorProvider : MainAPI() {
   )
   override var lang = "hi"
 
-  override var mainUrl = "https://net20.cc"
-  private var newUrl = "https://net51.cc"
+  override var mainUrl = "https://net22.cc"
+  private var newUrl = "https://net52.cc"
   override var name = "Netflix"
 
   override val hasMainPage = true
@@ -57,8 +57,8 @@ class NetflixMirrorProvider : MainAPI() {
 
   private fun Element.toHomePageList(): HomePageList {
     val name = selectFirst(".row-header-title")?.text()
-    ?: selectFirst("h2.rowHeader")?.text()
-    ?: select("h2, span").text()
+      ?: selectFirst("h2.rowHeader")?.text()
+      ?: select("h2, span").text()
     //article, .top10-post
     val items = select(".boxart-image, img.lazy").mapNotNull {
       it.toSearchResult()
