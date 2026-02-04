@@ -220,46 +220,39 @@ class NetflixMirrorProvider : MainAPI() {
       "ott" to "nf",
       "hd" to "on"
     )
-
     val playlist = app.get(
-      "$newUrl/tv/playlist.php?id=$id&t=$title&tm=${APIHolder.unixTime}",
+      "$newUrl/playlist.php?id=$id&t=$title&tm=${APIHolder.unixTime}",
       headers,
-      referer = "$mainUrl/home",
+      referer = "$newUrl/",
       cookies = cookies
     ).parsed<PlayList>()
 
     playlist.forEach {
       item ->
       item.sources.forEach {
-        source ->
-        val m3u8Url = when {
-          source.file.startsWith("http") -> source.file
-          source.file.startsWith("/") -> "$newUrl${source.file}"
-          else -> "$newUrl/${source.file}"
-        }
-
         callback.invoke(
-          ExtractorLink(
+          newExtractorLink(
             name,
-            source.label ?: name,
-            m3u8Url,
-            referer = "$newUrl/",
-            quality = getQualityFromName(source.file.substringAfter("q=", "").substringBefore("&")),
-            isM3u8 = true,
-            headers = mapOf(
-              "User-Agent" to "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
+            it.label,
+            newUrl + it.file,
+            type = ExtractorLinkType.M3U8
+          ) {
+            this.referer = "$newUrl/"
+            this.quality = getQualityFromName(it.file.substringAfter("q=", ""))
+            this.headers = mapOf(
+              "User-Agent" to "Mozilla/5.0 (Android) ExoPlayer",
               "Accept" to "*/*",
-              "Origin" to newUrl,
-              "Referer" to "$newUrl/",
-              "Cookie" to "hd=on; t_hash_t=$cookie_value; ott=nf"
+              "Accept-Encoding" to "identity",
+              "Connection" to "keep-alive",
+              "Cookie" to "hd=on"
             )
-          )
+          }
         )
       }
 
       item.tracks?.filter {
         it.kind == "captions"
-      }?.forEach {
+      }?.map {
         track ->
         subtitleCallback.invoke(
           SubtitleFile(
