@@ -134,13 +134,8 @@ class NetflixMirrorProvider : MainAPI() {
     }
     val rating = data.match?.replace("IMDb ", "")
     val runTime = convertRuntimeToMinutes(data.runtime.toString())
-    val suggest = data.suggest?.map {
-      newAnimeSearchResponse("", Id(it.id).toJson()) {
-        this.posterUrl = "https://imgcdn.kim/poster/v/${it.id}.jpg"
-        posterHeaders = mapOf("Referer" to "$mainUrl/home")
-      }
-    }
-
+    
+    
     if (data.episodes.first() == null) {
       episodes.add(newEpisode(LoadData(title, id)) {
         name = data.title
@@ -178,7 +173,6 @@ class NetflixMirrorProvider : MainAPI() {
       this.score = Score.from10(rating)
       this.duration = runTime
       this.contentRating = data.ua
-      this.recommendations = suggest
     }
   }
 
