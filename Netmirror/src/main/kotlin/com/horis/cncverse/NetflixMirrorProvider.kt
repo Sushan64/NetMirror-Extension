@@ -25,7 +25,7 @@ class NetflixMirrorProvider : MainAPI() {
   )
   override var lang = "hi"
 
-  override var mainUrl = "https://net22.cc"
+  override var mainUrl = "https://net20.cc"
   private var newUrl = "https://net52.cc"
   override var name = "Netflix"
 
@@ -188,9 +188,9 @@ class NetflixMirrorProvider : MainAPI() {
     var pg = page
     while (true) {
       val data = app.get(
-        "$newUrl/episodes.php?s=$sid&series=$eid&t=${APIHolder.unixTime}&page=$pg",
+        "$mainUrl/episodes.php?s=$sid&series=$eid&t=${APIHolder.unixTime}&page=$pg",
         headers,
-        referer = "$newUrl/tv/home",
+        referer = "$mainUrl/tv/home",
         cookies = cookies
       ).parsed<EpisodesData>()
       data.episodes?.mapTo(episodes) {
