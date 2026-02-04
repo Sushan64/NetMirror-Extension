@@ -57,8 +57,8 @@ class NetflixMirrorProvider : MainAPI() {
 
   private fun Element.toHomePageList(): HomePageList {
     val name = selectFirst(".row-header-title")?.text()
-      ?: selectFirst("h2.rowHeader")?.text()
-      ?: select("h2, span").text()
+    ?: selectFirst("h2.rowHeader")?.text()
+    ?: select("h2, span").text()
     //article, .top10-post
     val items = select(".boxart-image, img.lazy").mapNotNull {
       it.toSearchResult()
@@ -220,6 +220,7 @@ class NetflixMirrorProvider : MainAPI() {
       "ott" to "nf",
       "hd" to "on"
     )
+
     val playlist = app.get(
       "$newUrl/tv/playlist.php?id=$id&t=$title&tm=${APIHolder.unixTime}",
       headers,
@@ -230,29 +231,35 @@ class NetflixMirrorProvider : MainAPI() {
     playlist.forEach {
       item ->
       item.sources.forEach {
+        source ->
+        val m3u8Url = when {
+          source.file.startsWith("http") -> source.file
+          source.file.startsWith("/") -> "$newUrl${source.file}"
+          else -> "$newUrl/${source.file}"
+        }
+
         callback.invoke(
-          newExtractorLink(
+          ExtractorLink(
             name,
-            it.label,
-            """$newUrl${it.file.replace("/tv/", "/")}""",
-            type = ExtractorLinkType.M3U8
-          ) {
-            this.referer = "$newUrl/"
-            this.quality = getQualityFromName(it.file.substringAfter("q=", ""))
-            this.headers = mapOf(
-              "User-Agent" to "Mozilla/5.0 (Android) ExoPlayer",
+            source.label ?: name,
+            m3u8Url,
+            referer = "$newUrl/",
+            quality = getQualityFromName(source.file.substringAfter("q=", "").substringBefore("&")),
+            isM3u8 = true,
+            headers = mapOf(
+              "User-Agent" to "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
               "Accept" to "*/*",
-              "Accept-Encoding" to "identity",
-              "Connection" to "keep-alive",
-              "Cookie" to "hd=on"
+              "Origin" to newUrl,
+              "Referer" to "$newUrl/",
+              "Cookie" to "hd=on; t_hash_t=$cookie_value; ott=nf"
             )
-          }
+          )
         )
       }
 
       item.tracks?.filter {
         it.kind == "captions"
-      }?.map {
+      }?.forEach {
         track ->
         subtitleCallback.invoke(
           SubtitleFile(
