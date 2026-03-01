@@ -53,7 +53,7 @@ class NetflixMirrorProvider : MainAPI() {
   override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
     val cookies = getCookie() + mapOf (
         "user_token" to "233123f803cf02184bf6c67e149cdd50"
-    ),
+    )
     val document = app.get(
       "$mainUrl/home",
       cookies = cookies,
