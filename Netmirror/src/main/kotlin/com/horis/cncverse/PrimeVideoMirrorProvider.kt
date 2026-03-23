@@ -27,7 +27,7 @@ class PrimeVideoMirrorProvider : MainAPI() {
   )
   override var lang = "hi"
 
-  override var mainUrl = "https://net22.cc"
+  override var mainUrl = "https://net52.cc"
   private var newUrl = "https://net52.cc"
   override var name = "PrimeVideo"
 
@@ -54,12 +54,10 @@ class PrimeVideoMirrorProvider : MainAPI() {
 
 
   override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
-    val cookies = getCookie() + mapOf (
-        "user_token" to "233123f803cf02184bf6c67e149cdd50"
-    )
+    
     val data = app.get(
       "$mainUrl/tv/pv/homepage.php",
-      cookies = cookies,
+      cookies = getCookie(),
       referer = "$mainUrl/home",
     ).parsed<MainPage>()
 
