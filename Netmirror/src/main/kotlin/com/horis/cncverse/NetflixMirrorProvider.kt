@@ -244,14 +244,7 @@ class NetflixMirrorProvider : MainAPI() {
             mainUrl + it.file,
             type = ExtractorLinkType.M3U8
           ) {
-            this.referer = "$mainUrl/"
-            this.headers = mapOf(
-              "User-Agent" to "Mozilla/5.0 (Android) ExoPlayer",
-              "Accept" to "*/*",
-              "Accept-Encoding" to "identity",
-              "Connection" to "keep-alive",
-              "Cookie" to "hd=on"
-            )
+            this.referer = "$mainUrl/home"
           }
         )
       }
