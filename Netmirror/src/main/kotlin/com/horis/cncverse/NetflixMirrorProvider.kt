@@ -27,41 +27,37 @@ class NetflixMirrorProvider : MainAPI() {
   )
   override var lang = "hi"
 
-  override var mainUrl = "https://net22.cc"
-  private var newUrl = "https://net22.cc"
+  override var mainUrl = "https://net52.cc"
+  private var newUrl = "https://net52.cc"
   override var name = "Netflix"
 
   override val hasMainPage = true
-  private var cookie_value = ""
   private val headers = mapOf(
-        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Language" to "en-IN,en-US;q=0.9,en;q=0.8",
-        "Cache-Control" to "max-age=0",
-        "Connection" to "keep-alive",
-        "sec-ch-ua" to "\"Not(A:Brand\";v=\"8\", \"Chromium\";v=\"144\", \"Android WebView\";v=\"144\"",
-        "sec-ch-ua-mobile" to "?0",
-        "sec-ch-ua-platform" to "\"Android\"",
-        "Sec-Fetch-Dest" to "document",
-        "Sec-Fetch-Mode" to "navigate",
-        "Sec-Fetch-Site" to "same-origin",
-        "Sec-Fetch-User" to "?1",
-        "Upgrade-Insecure-Requests" to "1",
-        "User-Agent" to "Mozilla/5.0 (Linux; Android 13; Pixel 5 Build/TQ3A.230901.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/144.0.7559.132 Safari/537.36 /OS.Gatu v3.0",
-        "X-Requested-With" to "XMLHttpRequest"
-    )
+    "X-Requested-With" to "XMLHttpRequest"
+  )
+  companion object {
+        private var cookie_value: String = ""
+    }
     
-
-  override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
-    cookie_value = if(cookie_value.isEmpty()) bypass(mainUrl) else cookie_value
-    val cookies = mapOf(
+    private suspend fun getCookie(): Map<String, String> {
+        if (cookie_value.isEmpty()) {
+            cookie_value = bypass(newUrl)
+        }
+        return mapOf (
             "t_hash_t" to cookie_value,
             "ott" to "nf",
             "hd" to "on"
         )
+    }
+
+  override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+    val cookies = getCookie() + mapOf (
+        "user_token" to "233123f803cf02184bf6c67e149cdd50"
+    )
     val document = app.get(
-      "$mainUrl/mobile/home?app=1",
+      "$mainUrl/home",
       cookies = cookies,
-      referer = "$mainUrl/mobile/home?app=1",
+      referer = "$mainUrl/",
     ).document
     val items = document.select(".lolomoRow").map {
       it.toHomePageList()
@@ -91,17 +87,11 @@ class NetflixMirrorProvider : MainAPI() {
   }
 
   override suspend fun search(query: String): List<SearchResponse> {
-    cookie_value = if(cookie_value.isEmpty()) bypass(mainUrl) else cookie_value
-    val cookies = mapOf(
-            "t_hash_t" to cookie_value,
-            "hd" to "on",
-            "ott" to "nf"
-    )
-    val url = "$mainUrl/mobile/search.php?s=$query&t=${APIHolder.unixTime}"
+    val url = "$mainUrl/search.php?s=$query&t=${APIHolder.unixTime}"
     val data = app.get(
       url,
       referer = "$mainUrl/tv/home",
-      cookies = cookies
+      cookies = getCookie()
     ).parsed<SearchData>()
 
     return data.searchResult.map {
@@ -114,17 +104,12 @@ class NetflixMirrorProvider : MainAPI() {
 
   override suspend fun load(url: String): LoadResponse? {
     val id = parseJson<Id>(url).id
-    cookie_value = if(cookie_value.isEmpty()) bypass(mainUrl) else cookie_value
-    val cookies = mapOf(
-            "t_hash_t" to cookie_value,
-            "hd" to "on",
-            "ott" to "nf"
-    )
+    
     val data = app.get(
-      "$mainUrl/mobile/post.php?id=$id&t=${APIHolder.unixTime}",
+      "$mainUrl/post.php?id=$id&t=${APIHolder.unixTime}",
       headers,
-      referer = "$mainUrl/home",
-      cookies = cookies
+      referer = "$mainUrl/tv/home",
+      cookies = getCookie()
     ).parsed<PostData>()
 
     val episodes = arrayListOf<Episode>()
@@ -193,19 +178,18 @@ class NetflixMirrorProvider : MainAPI() {
     title: String, eid: String, sid: String, page: Int
   ): List<Episode> {
     val episodes = arrayListOf<Episode>()
-    cookie_value = if(cookie_value.isEmpty()) bypass(mainUrl) else cookie_value
     val cookies = mapOf(
-            "t_hash_t" to cookie_value,
-            "hd" to "on",
-            "ott" to "nf"
+      "t_hash_t" to getCookie(),
+      "ott" to "nf",
+      "hd" to "on"
     )
     var pg = page
     while (true) {
       val data = app.get(
-        "$mainUrl/mobile/episodes.php?s=$sid&series=$eid&t=${APIHolder.unixTime}&page=$pg",
+        "$mainUrl/episodes.php?s=$sid&series=$eid&t=${APIHolder.unixTime}&page=$pg",
         headers,
-        referer = "$mainUrl/home",
-        cookies = cookies
+        referer = "$mainUrl/tv/home",
+        cookies = getCookie()
       ).parsed<EpisodesData>()
       data.episodes?.mapTo(episodes) {
         newEpisode(LoadData(title, it.id)) {
@@ -229,19 +213,13 @@ class NetflixMirrorProvider : MainAPI() {
     callback: (ExtractorLink) -> Unit
   ): Boolean {
     val (title, id) = parseJson<LoadData>(data)
-    
-    cookie_value = if(cookie_value.isEmpty()) bypass(mainUrl) else cookie_value
-        val cookies = mapOf(
-            "t_hash_t" to cookie_value,
-            "hd" to "on",
-            "ott" to "nf"
-        )
-        
+
+    val token = getVideoToken(mainUrl, newUrl, id, getCookie())
     val playlist = app.get(
-      "$mainUrl/mobile/playlist.php?id=$id&t=$title&tm=${APIHolder.unixTime}",
+      "$newUrl/playlist.php?id=$id&t=$title&h=$token&tm=${APIHolder.unixTime}",
       headers,
-      referer = "$mainUrl/home",
-      cookies = cookies
+      referer = "$mainUrl/",
+      cookies = getCookie()
     ).parsed<PlayList>()
 
     playlist.forEach {
@@ -251,10 +229,17 @@ class NetflixMirrorProvider : MainAPI() {
           newExtractorLink(
             name,
             it.label,
-            mainUrl + it.file,
+            newUrl + it.file,
             type = ExtractorLinkType.M3U8
           ) {
-            this.referer = "$mainUrl/home"
+            this.referer = "$newUrl/"
+            this.headers = mapOf(
+              "User-Agent" to "Mozilla/5.0 (Android) ExoPlayer",
+              "Accept" to "*/*",
+              "Accept-Encoding" to "identity",
+              "Connection" to "keep-alive",
+              "Cookie" to "hd=on"
+            )
           }
         )
       }
@@ -278,8 +263,8 @@ class NetflixMirrorProvider : MainAPI() {
 
     return true
   }
-  
-    @Suppress("ObjectLiteralToLambda")
+
+@Suppress("ObjectLiteralToLambda")
     override fun getVideoInterceptor(extractorLink: ExtractorLink): Interceptor? {
         return object : Interceptor {
             override fun intercept(chain: Interceptor.Chain): Response {
@@ -294,7 +279,6 @@ class NetflixMirrorProvider : MainAPI() {
             }
         }
     }
-
   data class Id(
     val id: String
   )

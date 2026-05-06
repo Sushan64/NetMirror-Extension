@@ -16,8 +16,6 @@ import kotlinx.coroutines.delay
 import android.content.Context
 import com.lagradost.api.Log
 import org.json.JSONObject
-import java.util.UUID
-import okhttp3.Request
 
 val JSONParser = object : ResponseParser {
   val mapper: ObjectMapper = jacksonObjectMapper().configure(
@@ -91,57 +89,54 @@ suspend fun bypass(mainUrl: String): String {
   }
 
   val newCookie = try {
-        val headers = mapOf(
-            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            "Accept-Encoding" to "gzip, deflate, br, zstd",
-            "Accept-Language" to "en-US,en;q=0.9",
-            "Cache-Control" to "max-age=0",
-            "Connection" to "keep-alive",
-            "Content-Type" to "application/x-www-form-urlencoded",
-            "Origin" to "$mainUrl",
-            "Referer" to "$mainUrl/verify2",
-            "sec-ch-ua" to "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
-            "sec-ch-ua-mobile" to "?0",
-            "sec-ch-ua-platform" to "\"Windows\"",
-            "Sec-Fetch-Dest" to "document",
-            "Sec-Fetch-Mode" to "navigate",
-            "Sec-Fetch-Site" to "same-origin",
-            "Sec-Fetch-User" to "?1",
-            "Upgrade-Insecure-Requests" to "1",
-            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
-        )
-        val formBody = FormBody.Builder()
-            .add("g-recaptcha-response", UUID.randomUUID().toString())
-            .build()
-        val client = app.baseClient.newBuilder()
-            .followRedirects(false)
-            .followSslRedirects(false)
-            .build()
-        val request = Request.Builder()
-            .url("https://net52.cc/verify.php")
-            .post(formBody)
-            .apply {
-                headers.forEach { (key, value) ->
-                    addHeader(key, value)
-                }
-            }
-            .build()
-        client.newCall(request).execute().use { response ->
-            response.headers("Set-Cookie")
-                .firstOrNull { it.startsWith("t_hash_t=") }
-                ?.substringAfter("t_hash_t=")
-                ?.substringBefore(";")
-                .orEmpty()
-        }
-    } catch (e: Exception) {
-        // Clear invalid cookie on failure
-        NetflixMirrorStorage.clearCookie()
-        throw e
-    }
+    var verifyCheck: String
+    var verifyResponse: NiceResponse
+    do {
+      verifyResponse = app.post("$mainUrl/tv/p.php")
+      verifyCheck = verifyResponse.text
+    } while (!verifyCheck.contains("\"r\":\"n\""))
+      verifyResponse.cookies["t_hash_t"].orEmpty()
+  } catch (e: Exception) {
+    // Clear invalid cookie on failure
+    NetflixMirrorStorage.clearCookie()
+    throw e
+  }
 
   // Persist the new cookie
   if (newCookie.isNotEmpty()) {
     NetflixMirrorStorage.saveCookie(newCookie)
   }
   return newCookie
+}
+
+suspend fun getVideoToken(mainUrl: String, newUrl: String, id: String, cookies: Map<String, String>): String {
+    val requestBody = FormBody.Builder().add("id", id).build()
+    val headers = mapOf(
+        "X-Requested-With" to "XMLHttpRequest",
+        "Referer" to "$mainUrl/",
+    )
+    val json = app.post("$mainUrl/play.php", cookies = cookies, requestBody = requestBody, headers = headers).text
+    val h = JSONObject(json).getString("h")
+
+    val headers2 = mapOf(
+        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language" to "en-GB,en;q=0.9",
+        "Connection" to "keep-alive",
+        "Host" to "net52.cc",
+        "Referer" to "$mainUrl/",
+        "sec-ch-ua" to "\"Chromium\";v=\"142\", \"Brave\";v=\"142\", \"Not_A Brand\";v=\"99\"",
+        "sec-ch-ua-mobile" to "?0",
+        "sec-ch-ua-platform" to "\"Linux\"",
+        "Sec-Fetch-Dest" to "iframe",
+        "Sec-Fetch-Mode" to "navigate",
+        "Sec-Fetch-Site" to "cross-site",
+        "Sec-Fetch-Storage-Access" to "none",
+        "Sec-Fetch-User" to "?1",
+        "Sec-GPC" to "1",
+        "Upgrade-Insecure-Requests" to "1",
+        "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+    )
+    val document = app.get("$newUrl/play.php?id=$id&$h", headers = headers2).document
+    val token = document.select("body").attr("data-h")
+    return token
 }
