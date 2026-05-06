@@ -1,5 +1,6 @@
 package com.horis.cncverse
 
+import android.content.Context
 import com.horis.cncverse.entities.EpisodesData
 import com.horis.cncverse.entities.PlayList
 import com.horis.cncverse.entities.PostData
@@ -19,252 +20,258 @@ import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.APIHolder.unixTime
 
 class NetflixMirrorProvider : MainAPI() {
-  override val supportedTypes = setOf(
-    TvType.Movie,
-    TvType.TvSeries,
-    TvType.Anime,
-    TvType.AsianDrama
-  )
-  override var lang = "hi"
-
-  override var mainUrl = "https://net52.cc"
-  private var newUrl = "https://net52.cc"
-  override var name = "Netflix"
-
-  override val hasMainPage = true
-  private val headers = mapOf(
-    "X-Requested-With" to "XMLHttpRequest"
-  )
-  companion object {
-        private var cookie_value: String = ""
+    companion object {
+        var context: Context? = null
     }
     
-    private suspend fun getCookie(): Map<String, String> {
-        if (cookie_value.isEmpty()) {
-            cookie_value = bypass(newUrl)
-        }
-        return mapOf (
+    override val supportedTypes = setOf(
+        TvType.Movie,
+        TvType.TvSeries,
+        TvType.Anime,
+        TvType.AsianDrama
+    )
+    override var lang = "hi"
+
+    override var mainUrl = "https://net52.cc"
+    override var newUrl = "https://net22.cc"
+    
+    override var name = "Netflix"
+
+    override val hasMainPage = true
+    private var cookie_value = ""
+    private val headers = mapOf(
+        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Language" to "en-IN,en-US;q=0.9,en;q=0.8",
+        "Cache-Control" to "max-age=0",
+        "Connection" to "keep-alive",
+        "sec-ch-ua" to "\"Not(A:Brand\";v=\"8\", \"Chromium\";v=\"144\", \"Android WebView\";v=\"144\"",
+        "sec-ch-ua-mobile" to "?0",
+        "sec-ch-ua-platform" to "\"Android\"",
+        "Sec-Fetch-Dest" to "document",
+        "Sec-Fetch-Mode" to "navigate",
+        "Sec-Fetch-Site" to "same-origin",
+        "Sec-Fetch-User" to "?1",
+        "Upgrade-Insecure-Requests" to "1",
+        "User-Agent" to "Mozilla/5.0 (Linux; Android 13; Pixel 5 Build/TQ3A.230901.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/144.0.7559.132 Safari/537.36 /OS.Gatu v3.0",
+        "X-Requested-With" to "XMLHttpRequest"
+    )
+
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        cookie_value = if(cookie_value.isEmpty()) bypass(newUrl) else cookie_value
+        val cookies = mapOf(
             "t_hash_t" to cookie_value,
             "ott" to "nf",
             "hd" to "on"
         )
+        val document = app.get(
+            "$mainUrl/mobile/home?app=1",
+            cookies = cookies,
+            headers = headers,
+            referer = "$mainUrl/mobile/home?app=1",
+        ).document
+        val items = document.select(".tray-container, #top10").map {
+            it.toHomePageList()
+        }
+        return newHomePageResponse(items, false)
     }
 
-  override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
-    val cookies = getCookie() + mapOf (
-        "user_token" to "233123f803cf02184bf6c67e149cdd50"
-    )
-    val document = app.get(
-      "$mainUrl/home",
-      cookies = cookies,
-      referer = "$mainUrl/",
-    ).document
-    val items = document.select(".lolomoRow").map {
-      it.toHomePageList()
-    }
-    return newHomePageResponse(items, false)
-  }
-
-  private fun Element.toHomePageList(): HomePageList {
-    val name = selectFirst(".row-header-title")?.text()
+    private fun Element.toHomePageList(): HomePageList {
+        val name = selectFirst(".row-header-title")?.text()
     ?: selectFirst("h2.rowHeader")?.text()
     ?: select("h2, span").text()
     //article, .top10-post
     val items = select(".boxart-image, img.lazy").mapNotNull {
       it.toSearchResult()
     }
-    return HomePageList(name, items)
-  }
-
-  private fun Element.toSearchResult(): SearchResponse? {
-    val id = attr("data-src").substringAfterLast("/").substringBefore(".")
-    val posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
-
-    return newAnimeSearchResponse("", Id(id).toJson()) {
-      this.posterUrl = posterUrl
-      posterHeaders = mapOf("Referer" to "$mainUrl/home")
+        return HomePageList(name, items)
     }
-  }
 
-  override suspend fun search(query: String): List<SearchResponse> {
-    val url = "$mainUrl/search.php?s=$query&t=${APIHolder.unixTime}"
-    val data = app.get(
-      url,
-      referer = "$mainUrl/tv/home",
-      cookies = getCookie()
-    ).parsed<SearchData>()
+    private fun Element.toSearchResult(): SearchResponse? {
+        val id = selectFirst("a")?.attr("data-post") ?: attr("data-post")
 
-    return data.searchResult.map {
-      newAnimeSearchResponse(it.t, Id(it.id).toJson()) {
-        posterUrl = "https://imgcdn.kim/poster/v/${it.id}.jpg"
-        posterHeaders = mapOf("Referer" to "$mainUrl/home")
-      }
-    }
-  }
-
-  override suspend fun load(url: String): LoadResponse? {
-    val id = parseJson<Id>(url).id
-    
-    val data = app.get(
-      "$mainUrl/post.php?id=$id&t=${APIHolder.unixTime}",
-      headers,
-      referer = "$mainUrl/tv/home",
-      cookies = getCookie()
-    ).parsed<PostData>()
-
-    val episodes = arrayListOf<Episode>()
-
-    val title = data.title
-    val castList = data.cast?.split(",")?.map {
-      it.trim()
-    } ?: emptyList()
-    val cast = castList.map {
-      ActorData(
-        Actor(it),
-      )
-    }
-    val genre = data.genre?.split(",")
-    ?.map {
-      it.trim()
-    }
-    ?.filter {
-      it.isNotEmpty()
-    }
-    val rating = data.match?.replace("IMDb ", "")
-    val runTime = convertRuntimeToMinutes(data.runtime.toString())
-    
-    
-    if (data.episodes.first() == null) {
-      episodes.add(newEpisode(LoadData(title, id)) {
-        name = data.title
-      })
-    } else {
-      data.episodes.filterNotNull().mapTo(episodes) {
-        newEpisode(LoadData(title, it.id)) {
-          this.name = it.t
-          this.episode = it.ep.replace("E", "").toIntOrNull()
-          this.season = it.s.replace("S", "").toIntOrNull()
-          this.posterUrl = "https://imgcdn.kim/epimg/150/${it.id}.jpg"
-          this.runTime = it.time.replace("m", "").toIntOrNull()
+        return newAnimeSearchResponse("", Id(id).toJson()) {
+            this.posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
+            posterHeaders = mapOf("Referer" to "$mainUrl/home")
         }
-      }
-
-      if (data.nextPageShow == 1) {
-        episodes.addAll(getEpisodes(title, url, data.nextPageSeason!!, 2))
-      }
-
-      data.season?.dropLast(1)?.amap {
-        episodes.addAll(getEpisodes(title, url, it.id, 1))
-      }
     }
 
-    val type = if (data.episodes.first() == null) TvType.Movie else TvType.TvSeries
+    override suspend fun search(query: String): List<SearchResponse> {
+        cookie_value = if(cookie_value.isEmpty()) bypass(newUrl) else cookie_value
+        val cookies = mapOf(
+            "t_hash_t" to cookie_value,
+            "hd" to "on",
+            "ott" to "nf"
+        )
+        val url = "$mainUrl/mobile/search.php?s=$query&t=${APIHolder.unixTime}"
+        val data = app.get(url, referer = "$mainUrl/home", cookies = cookies).parsed<SearchData>()
 
-    return newTvSeriesLoadResponse(title, url, type, episodes) {
-      posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
-      backgroundPosterUrl ="https://imgcdn.kim/poster/h/$id.jpg"
-      posterHeaders = mapOf("Referer" to "$mainUrl/home")
-      plot = data.desc
-      year = data.year.toIntOrNull()
-      tags = genre
-      actors = cast
-      this.score = Score.from10(rating)
-      this.duration = runTime
-      this.contentRating = data.ua
-    }
-  }
-
-  private suspend fun getEpisodes(
-    title: String, eid: String, sid: String, page: Int
-  ): List<Episode> {
-    val episodes = arrayListOf<Episode>()
-    val cookies = mapOf(
-      "t_hash_t" to getCookie(),
-      "ott" to "nf",
-      "hd" to "on"
-    )
-    var pg = page
-    while (true) {
-      val data = app.get(
-        "$mainUrl/episodes.php?s=$sid&series=$eid&t=${APIHolder.unixTime}&page=$pg",
-        headers,
-        referer = "$mainUrl/tv/home",
-        cookies = getCookie()
-      ).parsed<EpisodesData>()
-      data.episodes?.mapTo(episodes) {
-        newEpisode(LoadData(title, it.id)) {
-          name = it.t
-          episode = it.ep.replace("E", "").toIntOrNull()
-          season = it.s.replace("S", "").toIntOrNull()
-          this.posterUrl = "https://imgcdn.kim/epimg/150/${it.id}.jpg"
-          this.runTime = it.time.replace("m", "").toIntOrNull()
+        return data.searchResult.map {
+            newAnimeSearchResponse(it.t, Id(it.id).toJson()) {
+                posterUrl = "https://imgcdn.kim/poster/v/${it.id}.jpg"
+                posterHeaders = mapOf("Referer" to "$mainUrl/home")
+            }
         }
-      }
-      if (data.nextPageShow == 0) break
-      pg++
-    }
-    return episodes
-  }
-
-  override suspend fun loadLinks(
-    data: String,
-    isCasting: Boolean,
-    subtitleCallback: (SubtitleFile) -> Unit,
-    callback: (ExtractorLink) -> Unit
-  ): Boolean {
-    val (title, id) = parseJson<LoadData>(data)
-
-    val token = getVideoToken(mainUrl, newUrl, id, getCookie())
-    val playlist = app.get(
-      "$newUrl/playlist.php?id=$id&t=$title&h=$token&tm=${APIHolder.unixTime}",
-      headers,
-      referer = "$mainUrl/",
-      cookies = getCookie()
-    ).parsed<PlayList>()
-
-    playlist.forEach {
-      item ->
-      item.sources.forEach {
-        callback.invoke(
-          newExtractorLink(
-            name,
-            it.label,
-            newUrl + it.file,
-            type = ExtractorLinkType.M3U8
-          ) {
-            this.referer = "$newUrl/"
-            this.headers = mapOf(
-              "User-Agent" to "Mozilla/5.0 (Android) ExoPlayer",
-              "Accept" to "*/*",
-              "Accept-Encoding" to "identity",
-              "Connection" to "keep-alive",
-              "Cookie" to "hd=on"
-            )
-          }
-        )
-      }
-
-      item.tracks?.filter {
-        it.kind == "captions"
-      }?.map {
-        track ->
-        subtitleCallback.invoke(
-          newSubtitleFile(
-            track.label.toString(),
-            httpsify(track.file.toString().replace("\\", "")),
-          ) {
-            this.headers = mapOf(
-              "Referer" to "$newUrl/"
-            )
-          }
-        )
-      }
     }
 
-    return true
-  }
+    override suspend fun load(url: String): LoadResponse? {
+        cookie_value = if(cookie_value.isEmpty()) bypass(newUrl) else cookie_value
+        val id = parseJson<Id>(url).id
+        val cookies = mapOf(
+            "t_hash_t" to cookie_value,
+            "hd" to "on",
+            "ott" to "nf"
+        )
+        val data = app.get(
+            "$mainUrl/mobile/post.php?id=$id&t=${APIHolder.unixTime}",
+            headers,
+            referer = "$mainUrl/home",
+            cookies = cookies
+        ).parsed<PostData>()
 
-@Suppress("ObjectLiteralToLambda")
+        val episodes = arrayListOf<Episode>()
+
+        val title = data.title
+        val castList = data.cast?.split(",")?.map { it.trim() } ?: emptyList()
+        val cast = castList.map {
+            ActorData(
+                Actor(it),
+            )
+        }
+        val genre = data.genre?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+
+        val rating = data.match?.replace("IMDb ", "")
+        val runTime = convertRuntimeToMinutes(data.runtime.toString())
+
+        val suggest = data.suggest?.map {
+            newAnimeSearchResponse("", Id(it.id).toJson()) {
+                this.posterUrl = "https://imgcdn.kim/poster/v/${it.id}.jpg"
+                posterHeaders = mapOf("Referer" to "$mainUrl/home")
+            }
+        }
+
+        if (data.episodes.first() == null) {
+            episodes.add(newEpisode(LoadData(title, id)) {
+                name = data.title
+            })
+        } else {
+            data.episodes.filterNotNull().mapTo(episodes) {
+                newEpisode(LoadData(title, it.id)) {
+                    this.name = it.t
+                    this.episode = it.ep.replace("E", "").toIntOrNull()
+                    this.season = it.s.replace("S", "").toIntOrNull()
+                    this.posterUrl = "https://imgcdn.kim/poster/v/150/${it.id}.jpg"
+                    this.runTime = it.time.replace("m", "").toIntOrNull()
+                }
+            }
+
+            if (data.nextPageShow == 1) {
+                episodes.addAll(getEpisodes(title, url, data.nextPageSeason!!, 2))
+            }
+
+            data.season?.dropLast(1)?.amap {
+                episodes.addAll(getEpisodes(title, url, it.id, 1))
+            }
+        }
+
+        val type = if (data.episodes.first() == null) TvType.Movie else TvType.TvSeries
+
+        return newTvSeriesLoadResponse(title, url, type, episodes) {
+            posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
+            backgroundPosterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
+            posterHeaders = mapOf("Referer" to "$mainUrl/home")
+            plot = data.desc
+            year = data.year.toIntOrNull()
+            tags = genre
+            actors = cast
+            this.score =  Score.from10(rating)
+            this.duration = runTime
+            this.contentRating = data.ua
+            this.recommendations = suggest
+        }
+    }
+
+    private suspend fun getEpisodes(
+        title: String, eid: String, sid: String, page: Int
+    ): List<Episode> {
+        val episodes = arrayListOf<Episode>()
+        val cookies = mapOf(
+            "t_hash_t" to cookie_value,
+            "hd" to "on",
+            "ott" to "nf"
+        )
+        var pg = page
+        while (true) {
+            val data = app.get(
+                "$mainUrl/mobile/episodes.php?s=$sid&series=$eid&t=${APIHolder.unixTime}&page=$pg",
+                headers,
+                referer = "$mainUrl/home",
+                cookies = cookies
+            ).parsed<EpisodesData>()
+            data.episodes?.mapTo(episodes) {
+                newEpisode(LoadData(title, it.id)) {
+                    name = it.t
+                    episode = it.ep.replace("E", "").toIntOrNull()
+                    season = it.s.replace("S", "").toIntOrNull()
+                    this.posterUrl = "https://imgcdn.kim/epimg/150/${it.id}.jpg"
+                    this.runTime = it.time.replace("m", "").toIntOrNull()
+                }
+            }
+            if (data.nextPageShow == 0) break
+            pg++
+        }
+        return episodes
+    }
+
+    override suspend fun loadLinks(
+        data: String,
+        isCasting: Boolean,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ): Boolean {
+        val (title, id) = parseJson<LoadData>(data)
+        val cookies = mapOf(
+            "t_hash_t" to cookie_value,
+            "hd" to "on",
+            "ott" to "nf"
+        )
+        val playlist = app.get(
+            "$mainUrl/mobile/playlist.php?id=$id&t=$title&tm=${APIHolder.unixTime}",
+            headers,
+            referer = "$mainUrl/home",
+            cookies = cookies
+        ).parsed<PlayList>()
+
+        playlist.forEach { item ->
+            item.sources.forEach {
+                callback.invoke(
+                    newExtractorLink(
+                        name,
+                        it.label,
+                        "$mainUrl/${it.file}",
+                        type = ExtractorLinkType.M3U8
+                    ) {
+                        this.referer = "$mainUrl/home"
+                        this.quality = getQualityFromName(it.file.substringAfter("q=", ""))
+                    }
+                )
+            }
+
+            item.tracks?.filter { it.kind == "captions" }?.map { track ->
+                subtitleCallback.invoke(
+                    newSubtitleFile(
+                        track.label.toString(),
+                        httpsify(track.file.toString())
+                    )
+                )
+            }
+        }
+
+        return true
+    }
+
+    @Suppress("ObjectLiteralToLambda")
     override fun getVideoInterceptor(extractorLink: ExtractorLink): Interceptor? {
         return object : Interceptor {
             override fun intercept(chain: Interceptor.Chain): Response {
@@ -279,11 +286,12 @@ class NetflixMirrorProvider : MainAPI() {
             }
         }
     }
-  data class Id(
-    val id: String
-  )
 
-  data class LoadData(
-    val title: String, val id: String
-  )
+    data class Id(
+        val id: String
+    )
+
+    data class LoadData(
+        val title: String, val id: String
+    )
 }
