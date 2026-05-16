@@ -17,6 +17,7 @@ import com.lagradost.api.Log
 import org.json.JSONObject
 import java.util.UUID
 import okhttp3.Request
+import java.util.Base64
 
 val JSONParser = object : ResponseParser {
     val mapper: ObjectMapper = jacksonObjectMapper().configure(
