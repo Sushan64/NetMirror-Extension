@@ -227,7 +227,7 @@ class NetflixMirrorProvider : MainAPI() {
             headers = buildNewTvHeaders("nf", mapOf("Usertoken" to ""))
         ).parsed<NewTvPlayerResponse>()
 
-        if ((response.status != "ok" && status != 'otp') || response.video_link.isNullOrBlank()) return false
+        if ((response.status != "ok" && response.status != 'otp') || response.video_link.isNullOrBlank()) return false
 
         callback.invoke(
             newExtractorLink(name, name, response.video_link, type = ExtractorLinkType.M3U8) {
