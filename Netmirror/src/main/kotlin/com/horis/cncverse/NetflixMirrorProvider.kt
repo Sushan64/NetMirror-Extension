@@ -17,11 +17,13 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.APIHolder.unixTime
+import com.lagradost.cloudstream3.ui.settings.Globals.TV
+import com.lagradost.cloudstream3.ui.settings.Globals.isLayout
 
 class NetflixMirrorProvider : MainAPI() {
     companion object {
         var context: Context? = null
-
+        private const val BROWSER_DEBOUNCE_MS = 10_000L
     }
     
     override val supportedTypes = setOf(
@@ -31,7 +33,7 @@ class NetflixMirrorProvider : MainAPI() {
     override var lang = "hi"
 
     override var mainUrl = "https://net52.cc"
-    private var newUrl = "https://net11.cc"
+    private var newUrl = "https://net22.cc"
     override var name = "Netflix"
 
     override val hasMainPage = true
@@ -215,6 +217,28 @@ class NetflixMirrorProvider : MainAPI() {
         }
         return episodes
     }
+    
+    
+    
+    
+    private fun openInExternalBrowser(url: String) {
+        if (isLayout(TV)) return 
+        val ctx = context ?: return
+        val now = System.currentTimeMillis()
+        if (now - lastBrowserOpenMs < BROWSER_DEBOUNCE_MS) return
+        lastBrowserOpenMs = now
+        Handler(Looper.getMainLooper()).post {
+            try {
+                ctx.startActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                )
+            } catch (e: Exception) { }
+        }
+    }
+
+
 
 
     override suspend fun loadLinks(
