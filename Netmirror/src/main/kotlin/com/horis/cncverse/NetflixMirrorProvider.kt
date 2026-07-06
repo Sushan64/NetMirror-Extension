@@ -33,7 +33,7 @@ class NetflixMirrorProvider : MainAPI() {
     override var lang = "hi"
 
     override var mainUrl = "https://net52.cc"
-    private var newUrl = "https://net22.cc"
+    private var newUrl = "https://net11.cc"
     
     override var name = "Netflix"
 
@@ -227,7 +227,7 @@ class NetflixMirrorProvider : MainAPI() {
             headers = buildNewTvHeaders("nf", mapOf("Usertoken" to ""))
         ).parsed<NewTvPlayerResponse>()
 
-        if ((response.status != "ok" && response.status != "otp") || response.video_link.isNullOrBlank()) return false
+        if (response.status != "ok" || response.video_link.isNullOrBlank()) return false
 
         callback.invoke(
             newExtractorLink(name, name, response.video_link, type = ExtractorLinkType.M3U8) {
