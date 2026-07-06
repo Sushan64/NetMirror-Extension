@@ -113,7 +113,7 @@ class NetflixMirrorProvider : MainAPI() {
             }
         }
     }
-
+/*
     override suspend fun load(url: String): LoadResponse? {
         cookie_value = if(cookie_value.isEmpty()) bypass(newUrl) else cookie_value
         val id = parseJson<Id>(url).id
@@ -186,6 +186,11 @@ class NetflixMirrorProvider : MainAPI() {
             this.contentRating = data.ua
         }
     }
+*/
+// Temp
+override suspend fun load(url: String): LoadResponse? {
+    throw Exception("LOAD CALLED: $url")
+}
 
     private suspend fun getEpisodes(
         title: String, eid: String, sid: String, page: Int
