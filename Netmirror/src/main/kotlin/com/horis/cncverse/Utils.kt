@@ -81,7 +81,7 @@ fun convertRuntimeToMinutes(runtime: String): Int {
     return totalMinutes
 }
 
-suspend fun bypass(newUrl: String): String {
+suspend fun bypass(mainUrl: String): String {
     // Check persistent storage first
     val (savedCookie, savedTimestamp) = NetflixMirrorStorage.getCookie()
 
@@ -98,8 +98,8 @@ suspend fun bypass(newUrl: String): String {
             "Cache-Control" to "max-age=0",
             "Connection" to "keep-alive",
             "Content-Type" to "application/x-www-form-urlencoded",
-            "Origin" to "$newUrl",
-            "Referer" to "$newUrl/verify2",
+            "Origin" to "https://net22.cc",
+            "Referer" to "https://net22.cc/verify2",
             "sec-ch-ua" to "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
             "sec-ch-ua-mobile" to "?0",
             "sec-ch-ua-platform" to "\"Windows\"",

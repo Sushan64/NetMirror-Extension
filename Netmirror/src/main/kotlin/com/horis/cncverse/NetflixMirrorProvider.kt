@@ -1,18 +1,17 @@
 package com.horis.cncverse
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import com.horis.cncverse.entities.EpisodesData
-import com.horis.cncverse.entities.PlayList
 import com.horis.cncverse.entities.PostData
 import com.horis.cncverse.entities.SearchData
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
-import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.Qualities
-import com.lagradost.cloudstream3.utils.httpsify
-import com.lagradost.cloudstream3.utils.getQualityFromName
 import okhttp3.Headers
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -22,19 +21,17 @@ import com.lagradost.cloudstream3.APIHolder.unixTime
 class NetflixMirrorProvider : MainAPI() {
     companion object {
         var context: Context? = null
+
     }
     
     override val supportedTypes = setOf(
         TvType.Movie,
         TvType.TvSeries,
-        TvType.Anime,
-        TvType.AsianDrama
     )
-    override var lang = "hi"
+    override var lang = "ta"
 
     override var mainUrl = "https://net52.cc"
-    private var newUrl = "https://net22.cc"
-    
+    override var newUrl = "https://net11.cc"
     override var name = "Netflix"
 
     override val hasMainPage = true
@@ -57,6 +54,7 @@ class NetflixMirrorProvider : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+
         cookie_value = if(cookie_value.isEmpty()) bypass(newUrl) else cookie_value
         val cookies = mapOf(
             "t_hash_t" to cookie_value,
@@ -80,11 +78,13 @@ class NetflixMirrorProvider : MainAPI() {
         val items = select("article, .top10-post").mapNotNull {
             it.toSearchResult()
         }
-        return HomePageList(name, items)
+        return HomePageList(name, items, isHorizontalImages = false)
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
         val id = selectFirst("a")?.attr("data-post") ?: attr("data-post")
+        // val posterUrl =
+        //     fixUrlNull(selectFirst(".card-img-container img, .top10-img img")?.attr("data-src"))
 
         return newAnimeSearchResponse("", Id(id).toJson()) {
             this.posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
@@ -93,6 +93,7 @@ class NetflixMirrorProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
+        
         cookie_value = if(cookie_value.isEmpty()) bypass(newUrl) else cookie_value
         val cookies = mapOf(
             "t_hash_t" to cookie_value,
@@ -141,6 +142,7 @@ class NetflixMirrorProvider : MainAPI() {
         val rating = data.match?.replace("IMDb ", "")
         val runTime = convertRuntimeToMinutes(data.runtime.toString())
 
+        
 
         if (data.episodes.first() == null) {
             episodes.add(newEpisode(LoadData(title, id)) {
@@ -152,7 +154,7 @@ class NetflixMirrorProvider : MainAPI() {
                     this.name = it.t
                     this.episode = it.ep.replace("E", "").toIntOrNull()
                     this.season = it.s.replace("S", "").toIntOrNull()
-                    this.posterUrl = "https://imgcdn.kim/epimg/150/${it.id}.jpg"
+                    this.posterUrl = "https://imgcdn.kim/poster/v/150/${it.id}.jpg"
                     this.runTime = it.time.replace("m", "").toIntOrNull()
                 }
             }
@@ -170,7 +172,7 @@ class NetflixMirrorProvider : MainAPI() {
 
         return newTvSeriesLoadResponse(title, url, type, episodes) {
             posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
-            backgroundPosterUrl = "https://imgcdn.kim/poster/h/$id.jpg"
+            backgroundPosterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
             posterHeaders = mapOf("Referer" to "$mainUrl/home")
             plot = data.desc
             year = data.year.toIntOrNull()
@@ -213,6 +215,7 @@ class NetflixMirrorProvider : MainAPI() {
         }
         return episodes
     }
+
 
     override suspend fun loadLinks(
         data: String,
