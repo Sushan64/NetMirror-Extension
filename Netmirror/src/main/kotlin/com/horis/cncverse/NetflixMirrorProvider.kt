@@ -218,30 +218,8 @@ class NetflixMirrorProvider : MainAPI() {
         }
         return episodes
     }
-    
-    
-    
-    
-    private fun openInExternalBrowser(url: String) {
-        if (isLayout(TV)) return 
-        val ctx = context ?: return
-        val now = System.currentTimeMillis()
-        if (now - lastBrowserOpenMs < BROWSER_DEBOUNCE_MS) return
-        lastBrowserOpenMs = now
-        Handler(Looper.getMainLooper()).post {
-            try {
-                ctx.startActivity(
-                    Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                )
-            } catch (e: Exception) { }
-        }
-    }
 
-
-
-
+/*
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
@@ -265,6 +243,26 @@ class NetflixMirrorProvider : MainAPI() {
 
         return true
     }
+*/
+
+// Temp
+override suspend fun loadLinks(
+    data: String,
+    isCasting: Boolean,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit
+): Boolean {
+    val apiBase = resolveApiUrl()
+    val id = parseJson<LoadData>(data).id
+    
+    val rawResponse = app.get(
+        "$apiBase/newtv/player.php?id=$id",
+        headers = buildNewTvHeaders("nf", mapOf("Usertoken" to ""))
+    ).text
+
+    throw Exception(rawResponse)
+}
+
 
     @Suppress("ObjectLiteralToLambda")
     override fun getVideoInterceptor(extractorLink: ExtractorLink): Interceptor? {
