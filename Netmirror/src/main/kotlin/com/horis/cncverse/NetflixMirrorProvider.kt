@@ -102,6 +102,8 @@ class NetflixMirrorProvider : MainAPI() {
             referer = "$mainUrl/home",
             cookies = siteCookies()
         ).parsed<PostData>()
+        
+        throw Exception("tmdb_id = ${data.tmdb_id}, title = ${data.title}"
 
         val title = data.title
         val tmdbId = data.tmdb_id
