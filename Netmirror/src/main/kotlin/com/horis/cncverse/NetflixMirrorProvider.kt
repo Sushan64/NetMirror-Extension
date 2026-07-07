@@ -43,7 +43,6 @@ class NetflixMirrorProvider : MainAPI() {
     }
 
     private fun siteCookies() = mapOf(
-        "t_hash_t" to cookieValue,
         "ott" to "nf",
         "hd" to "on"
     )
