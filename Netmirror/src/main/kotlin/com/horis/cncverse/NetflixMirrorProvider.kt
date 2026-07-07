@@ -95,7 +95,8 @@ class NetflixMirrorProvider : MainAPI() {
     }
 
 
-    override suspend fun load(url: String): LoadResponse? {
+override suspend fun load(url: String): LoadResponse? {
+    return try {
         getCookie()
         val id = parseJson<Id>(url).id
         val data = app.get(
@@ -104,58 +105,16 @@ class NetflixMirrorProvider : MainAPI() {
             referer = "$mainUrl/home",
             cookies = siteCookies()
         ).parsed<PostData>()
-        
 
         val title = data.title
         val tmdbId = data.tmdb_id
-        
-        throw Exception("tmdb_id = $tmdbId, title = $title")
-        
-        val episodes = arrayListOf<Episode>()
 
-        val isMovie = data.episodes.isEmpty() || data.episodes.first() == null
+        throw Exception("tmdb_id=$tmdbId | title=$title")
 
-        if (isMovie) {
-            episodes.add(newEpisode(LoadData(title, id, tmdbId)) {
-                name = title
-            })
-        } else {
-            data.episodes.filterNotNull().mapTo(episodes) {
-                newEpisode(LoadData(title, it.id, tmdbId, it.s.replace("S","").toIntOrNull(), it.ep.replace("E","").toIntOrNull())) {
-                    this.name = it.t
-                    this.episode = it.ep.replace("E", "").toIntOrNull()
-                    this.season = it.s.replace("S", "").toIntOrNull()
-                    this.posterUrl = "https://imgcdn.kim/poster/v/150/${it.id}.jpg"
-                    this.runTime = it.time.replace("m", "").toIntOrNull()
-                }
-            }
-            if (data.nextPageShow == 1) {
-                episodes.addAll(getEpisodes(title, url, data.nextPageSeason!!, 2, tmdbId))
-            }
-            data.season?.dropLast(1)?.amap {
-                episodes.addAll(getEpisodes(title, url, it.id, 1, tmdbId))
-            }
-        }
-
-        val cast = data.cast?.split(",")?.map { it.trim() }
-            ?.filter { it.isNotEmpty() }?.map { ActorData(Actor(it)) }
-        val genre = data.genre?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
-        val type = if (isMovie) TvType.Movie else TvType.TvSeries
-
-        return newTvSeriesLoadResponse(title, url, type, episodes) {
-            posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
-            backgroundPosterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
-            posterHeaders = mapOf("Referer" to "$mainUrl/home")
-            plot = data.desc
-            year = data.year.toIntOrNull()
-            tags = genre
-            actors = cast
-            this.score = Score.from10(data.match?.replace("IMDb ", ""))
-            this.duration = convertRuntimeToMinutes(data.runtime.toString())
-            this.contentRating = data.ua
-        }
+    } catch (e: Exception) {
+        throw e 
     }
-
+}
     private suspend fun getEpisodes(
         title: String, eid: String, sid: String, page: Int, tmdbId: String?
     ): List<Episode> {
