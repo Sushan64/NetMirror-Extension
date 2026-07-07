@@ -38,10 +38,8 @@ class NetflixMirrorProvider : MainAPI() {
     )
 
     private suspend fun getCookie(): String {
-        if (cookieValue.isEmpty()) {
-        cookieValue = try { bypass(bypassUrl) } catch (e: Exception) { "" }
-    }
-    return cookieValue
+        if (cookieValue.isEmpty()) cookieValue = bypass(bypassUrl)
+        return cookieValue
     }
 
     private fun siteCookies() = mapOf(
@@ -50,7 +48,8 @@ class NetflixMirrorProvider : MainAPI() {
         "hd" to "on"
     )
 
-override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
         getCookie()
         val document = app.get(
             "$mainUrl/mobile/home?app=1",
@@ -62,14 +61,13 @@ override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageR
         return newHomePageResponse(items, false)
     }
 
-
     private fun Element.toHomePageList(): HomePageList {
         val name = select("h2, span").text()
         val items = select("article, .top10-post").mapNotNull { it.toSearchResult() }
         return HomePageList(name, items, isHorizontalImages = false)
     }
 
-private fun Element.toSearchResult(): SearchResponse? {
+    private fun Element.toSearchResult(): SearchResponse? {
         val id = selectFirst("a")?.attr("data-post") ?: attr("data-post")
         if (id.isNullOrBlank()) return null
         return newAnimeSearchResponse("", Id(id).toJson()) {
@@ -77,6 +75,7 @@ private fun Element.toSearchResult(): SearchResponse? {
             posterHeaders = mapOf("Referer" to "$mainUrl/home")
         }
     }
+
 
     override suspend fun search(query: String): List<SearchResponse> {
         getCookie()
@@ -94,8 +93,7 @@ private fun Element.toSearchResult(): SearchResponse? {
     }
 
 
-override suspend fun load(url: String): LoadResponse? {
-    return try {
+    override suspend fun load(url: String): LoadResponse? {
         getCookie()
         val id = parseJson<Id>(url).id
         val data = app.get(
@@ -107,13 +105,51 @@ override suspend fun load(url: String): LoadResponse? {
 
         val title = data.title
         val tmdbId = data.tmdb_id
+        val episodes = arrayListOf<Episode>()
 
-        throw Exception("tmdb_id=$tmdbId | title=$title")
+        val isMovie = data.episodes.isEmpty() || data.episodes.first() == null
 
-    } catch (e: Exception) {
-        throw e 
+        if (isMovie) {
+            episodes.add(newEpisode(LoadData(title, id, tmdbId)) {
+                name = title
+            })
+        } else {
+            data.episodes.filterNotNull().mapTo(episodes) {
+                newEpisode(LoadData(title, it.id, tmdbId, it.s.replace("S","").toIntOrNull(), it.ep.replace("E","").toIntOrNull())) {
+                    this.name = it.t
+                    this.episode = it.ep.replace("E", "").toIntOrNull()
+                    this.season = it.s.replace("S", "").toIntOrNull()
+                    this.posterUrl = "https://imgcdn.kim/poster/v/150/${it.id}.jpg"
+                    this.runTime = it.time.replace("m", "").toIntOrNull()
+                }
+            }
+            if (data.nextPageShow == 1) {
+                episodes.addAll(getEpisodes(title, url, data.nextPageSeason!!, 2, tmdbId))
+            }
+            data.season?.dropLast(1)?.amap {
+                episodes.addAll(getEpisodes(title, url, it.id, 1, tmdbId))
+            }
+        }
+
+        val cast = data.cast?.split(",")?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }?.map { ActorData(Actor(it)) }
+        val genre = data.genre?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
+        val type = if (isMovie) TvType.Movie else TvType.TvSeries
+
+        return newTvSeriesLoadResponse(title, url, type, episodes) {
+            posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
+            backgroundPosterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
+            posterHeaders = mapOf("Referer" to "$mainUrl/home")
+            plot = data.desc
+            year = data.year.toIntOrNull()
+            tags = genre
+            actors = cast
+            this.score = Score.from10(data.match?.replace("IMDb ", ""))
+            this.duration = convertRuntimeToMinutes(data.runtime.toString())
+            this.contentRating = data.ua
+        }
     }
-}
+
     private suspend fun getEpisodes(
         title: String, eid: String, sid: String, page: Int, tmdbId: String?
     ): List<Episode> {
