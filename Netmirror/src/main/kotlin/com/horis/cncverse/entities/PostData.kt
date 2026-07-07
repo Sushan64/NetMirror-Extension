@@ -15,4 +15,5 @@ data class PostData(
     val cast: String?,
     val match: String?,
     val runtime: String?,
+    val tmdb_id: String? = null
 )
