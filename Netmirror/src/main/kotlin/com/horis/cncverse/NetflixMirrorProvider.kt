@@ -52,12 +52,16 @@ class NetflixMirrorProvider : MainAPI() {
 
 
 override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
-    val response = app.get(
-        "https://net27.cc/api/trending",
-        headers = net27Headers
-    ).text
-    throw Exception("net27 trending: $response")
+    val document = app.get(
+        "$mainUrl/mobile/home?app=1",
+        headers = siteHeaders,
+        referer = "$mainUrl/mobile/home?app=1"
+    ).document
+    
+    val html = document.outerHtml()
+    throw Exception("HTML length: ${html.length} | has tray: ${html.contains("tray-container")}")
 }
+
     private fun Element.toHomePageList(): HomePageList {
         val name = select("h2, span").text()
         val items = select("article, .top10-post").mapNotNull { it.toSearchResult() }
