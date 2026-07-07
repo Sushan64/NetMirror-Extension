@@ -69,15 +69,14 @@ class NetflixMirrorProvider : MainAPI() {
         return HomePageList(name, items, isHorizontalImages = false)
     }
 
-    private fun Element.toSearchResult(): SearchResponse? {
-        val id = selectFirst("a")?.attr("data-post") ?: attr("data-post")
-        if (id.isNullOrBlank()) return null
-        return newAnimeSearchResponse("", Id(id).toJson()) {
-            posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
-            posterHeaders = mapOf("Referer" to "$mainUrl/home")
-        }
+private fun Element.toSearchResult(): SearchResponse? {
+    val id = selectFirst("a")?.attr("data-post") ?: attr("data-post")
+    if (id.isNullOrBlank()) return null
+    return newAnimeSearchResponse("", Id(id).toJson()) {
+        posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
+        posterHeaders = mapOf("Referer" to "$mainUrl/home")
     }
-
+}
 
     override suspend fun search(query: String): List<SearchResponse> {
         getCookie()
