@@ -38,8 +38,10 @@ class NetflixMirrorProvider : MainAPI() {
     )
 
     private suspend fun getCookie(): String {
-        if (cookieValue.isEmpty()) cookieValue = bypass(bypassUrl)
-        return cookieValue
+        if (cookieValue.isEmpty()) {
+        cookieValue = try { bypass(bypassUrl) } catch (e: Exception) { "" }
+    }
+    return cookieValue
     }
 
     private fun siteCookies() = mapOf(
