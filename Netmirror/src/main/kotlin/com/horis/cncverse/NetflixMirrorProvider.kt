@@ -103,10 +103,12 @@ class NetflixMirrorProvider : MainAPI() {
             cookies = siteCookies()
         ).parsed<PostData>()
         
-        throw Exception("tmdb_id = ${data.tmdb_id}, title = ${data.title}"
 
         val title = data.title
         val tmdbId = data.tmdb_id
+        
+        throw Exception("tmdb_id = $tmdb_id, title = $title")
+        
         val episodes = arrayListOf<Episode>()
 
         val isMovie = data.episodes.isEmpty() || data.episodes.first() == null
