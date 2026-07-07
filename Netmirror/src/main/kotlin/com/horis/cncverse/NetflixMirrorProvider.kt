@@ -107,7 +107,7 @@ class NetflixMirrorProvider : MainAPI() {
         val title = data.title
         val tmdbId = data.tmdb_id
         
-        throw Exception("tmdb_id = $tmdb_id, title = $title")
+        throw Exception("tmdb_id = $tmdbId, title = $title")
         
         val episodes = arrayListOf<Episode>()
 
