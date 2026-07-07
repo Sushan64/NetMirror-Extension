@@ -50,17 +50,18 @@ class NetflixMirrorProvider : MainAPI() {
         "hd" to "on"
     )
 
-
 override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
-    val document = app.get(
-        "$mainUrl/mobile/home?app=1",
-        headers = siteHeaders,
-        referer = "$mainUrl/mobile/home?app=1"
-    ).document
-    
-    val html = document.outerHtml()
-    throw Exception("HTML length: ${html.length} | has tray: ${html.contains("tray-container")}")
-}
+        getCookie()
+        val document = app.get(
+            "$mainUrl/mobile/home?app=1",
+            cookies = siteCookies(),
+            headers = siteHeaders,
+            referer = "$mainUrl/mobile/home?app=1"
+        ).document
+        val items = document.select(".tray-container, #top10").map { it.toHomePageList() }
+        return newHomePageResponse(items, false)
+    }
+
 
     private fun Element.toHomePageList(): HomePageList {
         val name = select("h2, span").text()
@@ -69,13 +70,13 @@ override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageR
     }
 
 private fun Element.toSearchResult(): SearchResponse? {
-    val id = selectFirst("a")?.attr("data-post") ?: attr("data-post")
-    if (id.isNullOrBlank()) return null
-    return newAnimeSearchResponse("", Id(id).toJson()) {
-        posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
-        posterHeaders = mapOf("Referer" to "$mainUrl/home")
+        val id = selectFirst("a")?.attr("data-post") ?: attr("data-post")
+        if (id.isNullOrBlank()) return null
+        return newAnimeSearchResponse("", Id(id).toJson()) {
+            posterUrl = "https://imgcdn.kim/poster/v/$id.jpg"
+            posterHeaders = mapOf("Referer" to "$mainUrl/home")
+        }
     }
-}
 
     override suspend fun search(query: String): List<SearchResponse> {
         getCookie()
