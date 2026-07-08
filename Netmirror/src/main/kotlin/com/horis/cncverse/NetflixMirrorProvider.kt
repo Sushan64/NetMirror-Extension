@@ -197,7 +197,8 @@ class NetflixMirrorProvider : MainAPI() {
     val id = parseJson<LoadData>(data).id
     val response = app.get(
         "$apiBase/newtv/player.php?id=$id",
-        headers = buildNewTvHeaders("nf", mapOf("Usertoken" to ""))
+        headers = buildNewTvHeaders("nf", emptyMap()),
+        cookies = mapOf("t_hash_t" to cookie_value, "hd" to "on", "ott" to "nf")
     ).parsed<NewTvPlayerResponse>()
 
     if ((response.status != "ok" && response.status != "otp") || response.video_link.isNullOrBlank()) return false
