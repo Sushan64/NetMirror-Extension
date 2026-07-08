@@ -49,11 +49,20 @@ class NetflixMirrorProvider : MainAPI() {
   private suspend fun fetchTmdbId(title: String, year: String, isMovie: Boolean): String? {
     val type = if (isMovie) "movie" else "tv"
     val apiKey = "8d6d91941230817f7807d643736f8f3e"
-    val encodedTitle = java.net.URLEncoder.encode(title, "UTF-8")
-    val url = "https://api.themoviedb.org/3/search/$type?api_key=$apiKey&query=$encodedTitle&year=$year"
-    val response = app.get(url).parsed<TmdbSearchResponse>()
+    val encodedTitle = java.net.URLEncoder.encode(title.trim(), "UTF-8")
+    
+    // Try with year first
+    var url = "https://api.themoviedb.org/3/search/$type?api_key=$apiKey&query=$encodedTitle&year=$year"
+    var response = app.get(url).parsed<TmdbSearchResponse>()
+    
+    // If no results, try without year
+    if (response.results.isNullOrEmpty()) {
+        url = "https://api.themoviedb.org/3/search/$type?api_key=$apiKey&query=$encodedTitle"
+        response = app.get(url).parsed<TmdbSearchResponse>()
+    }
+    
     val result = response.results?.firstOrNull()?.id?.toString()
-    throw Exception("TMDB url=$url | firstResult=$result")
+    throw Exception("TMDB result=$result for title=$title")
 }
 
   data class TmdbSearchResponse(
