@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://raw.githubusercontent.com/Sushan64/NetMirror-Extension/refs/heads/master/Netmirror/logo.jpeg",
-        "fileHash": "sha256-ca2231b15541aee9ee8dd64c2d4f0f754890fa8c2e841711e5ee7f5999b78b25",
+        "fileHash": "sha256-4582b2c43e9d0231e28e14262d3644d842db44981b218d3dc9a7ed9041aee812",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Sushan64/NetMirror-Extension",
-        "fileSize": 63306,
+        "fileSize": 63461,
         "status": 1,
         "language": "hi",
         "authors": [
