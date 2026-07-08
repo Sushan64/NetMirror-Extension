@@ -193,19 +193,39 @@ class NetflixMirrorProvider : MainAPI() {
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
-    val apiBase = resolveApiUrl()
-    val id = parseJson<LoadData>(data).id
-    val response = app.get(
-        "$apiBase/newtv/player.php?id=$id",
-        headers = buildNewTvHeaders("nf", emptyMap()),
-        cookies = mapOf("t_hash_t" to cookie_value, "hd" to "on", "ott" to "nf")
-    ).parsed<NewTvPlayerResponse>()
+    val loadData = parseJson<LoadData>(data)
+    val id = loadData.id
+    val title = loadData.title ?: ""
+    val cookies = mapOf("t_hash_t" to cookie_value, "hd" to "on", "ott" to "nf")
 
-    if ((response.status != "ok" && response.status != "otp") || response.video_link.isNullOrBlank()) return false
+    val playerDoc = app.get(
+        "$mainUrl/p/$id",
+        headers = headers,
+        cookies = cookies,
+        referer = "$mainUrl/"
+    ).document
+
+    val body = playerDoc.selectFirst("body") ?: return false
+    val h = body.attr("data-h")
+    val tm = body.attr("data-time")
+
+    if (h.isBlank() || tm.isBlank()) return false
+
+    val encodedTitle = java.net.URLEncoder.encode(title, "UTF-8")
+    val playlistUrl = "$mainUrl/playlist.php?id=$id&t=$encodedTitle&tm=$tm&h=$h"
+
+    val m3u8 = app.get(
+        playlistUrl,
+        headers = headers,
+        cookies = cookies,
+        referer = "$mainUrl/"
+    ).text
+
+    if (m3u8.isBlank() || !m3u8.contains("#EXTM3U")) return false
 
     callback.invoke(
-        newExtractorLink(name, name, response.video_link, type = ExtractorLinkType.M3U8) {
-            this.referer = response.referer ?: apiBase
+        newExtractorLink(name, name, playlistUrl, type = ExtractorLinkType.M3U8) {
+            this.referer = "$mainUrl/"
         }
     )
     return true
