@@ -111,14 +111,14 @@ suspend fun bypass(mainUrl: String): String {
             "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
         )
         val formBody = FormBody.Builder()
-            .add("cf-turnstile-response", UUID.randomUUID().toString())
+            .add("g-recaptcha-response", UUID.randomUUID().toString())
             .build()
         val client = app.baseClient.newBuilder()
             .followRedirects(false)
             .followSslRedirects(false)
             .build()
         val request = Request.Builder()
-            .url("https://net77.cc/verify.php")
+            .url("https://net52.cc/verify.php")
             .post(formBody)
             .apply {
                 headers.forEach { (key, value) ->
