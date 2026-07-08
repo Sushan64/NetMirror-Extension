@@ -138,7 +138,7 @@ class NetflixMirrorProvider : MainAPI() {
     val episodes = arrayListOf<Episode>()
 
     val isMovie = data.episodes.isEmpty() || data.episodes.first() == null
-    val tmdbId = fetchTmdbId(title, year, isMovie)
+    val tmdbId = fetchTmdbId(title, data.year, isMovie)
     
     if (isMovie) {
       episodes.add(newEpisode(LoadData(title, id, tmdbId)) {
