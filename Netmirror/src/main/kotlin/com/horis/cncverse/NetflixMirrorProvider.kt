@@ -106,11 +106,13 @@ class NetflixMirrorProvider : MainAPI() {
             "ott" to "nf"
         )
         val data = app.get(
-            "$mainUrl/mobile/post.php?id=$id&t=$unixTime",
-            headers,
-            referer = "$mainUrl/home",
+         "$mainUrl/mobile/post.php?id=$id&t=$unixTime",
+          headers,
+           referer = "$mainUrl/home",
             cookies = cookies
         ).parsed<PostData>()
+
+        throw Exception("tmdb_id=${data.tmdb_id} | title=${data.title}")
 
         val title = data.title
         val tmdbId = data.tmdb_id
