@@ -193,31 +193,19 @@ class NetflixMirrorProvider : MainAPI() {
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
+    val apiBase = resolveApiUrl()
     val id = parseJson<LoadData>(data).id
-    
-    val apiBase = try {
-        resolveApiUrl()
-    } catch (e: Exception) {
-        callback.invoke(
-            newExtractorLink(name, "FAILED: ${e.message}", "https://test.com", type = ExtractorLinkType.VIDEO) {}
-        )
-        return true
-    }
+    val response = app.get(
+        "$apiBase/newtv/player.php?id=$id",
+        headers = buildNewTvHeaders("nf", mapOf("Usertoken" to ""))
+    ).parsed<NewTvPlayerResponse>()
 
-    val rawResponse = try {
-        app.get(
-            "$apiBase/newtv/player.php?id=$id",
-            headers = buildNewTvHeaders("nf", mapOf("Usertoken" to ""))
-        ).text
-    } catch (e: Exception) {
-        callback.invoke(
-            newExtractorLink(name, "PLAYER FAILED: ${e.message}", "https://test.com", type = ExtractorLinkType.VIDEO) {}
-        )
-        return true
-    }
+    if ((response.status != "ok" && response.status != "otp") || response.video_link.isNullOrBlank()) return false
 
     callback.invoke(
-        newExtractorLink(name, "RAW: $rawResponse", "https://test.com", type = ExtractorLinkType.VIDEO) {}
+        newExtractorLink(name, name, response.video_link, type = ExtractorLinkType.M3U8) {
+            this.referer = response.referer ?: apiBase
+        }
     )
     return true
 }
@@ -240,7 +228,7 @@ class NetflixMirrorProvider : MainAPI() {
     data class Id(val id: String)
 
     data class LoadData(
-        val title: String,
-        val id: String
-    )
+    val title: String? = null,
+    val id: String
+)
 }
