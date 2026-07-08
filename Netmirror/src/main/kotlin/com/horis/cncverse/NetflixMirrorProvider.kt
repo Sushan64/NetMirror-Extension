@@ -46,32 +46,7 @@ class NetflixMirrorProvider : MainAPI() {
     "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
   )
 
-  private suspend fun fetchTmdbId(title: String, year: String, isMovie: Boolean): String? {
-    val type = if (isMovie) "movie" else "tv"
-    val apiKey = "8d6d91941230817f7807d643736f8f3e"
-    val encodedTitle = java.net.URLEncoder.encode(title.trim(), "UTF-8")
-    
-    // Try with year first
-    var url = "https://api.themoviedb.org/3/search/$type?api_key=$apiKey&query=$encodedTitle&year=$year"
-    var response = app.get(url).parsed<TmdbSearchResponse>()
-    
-    // If no results, try without year
-    if (response.results.isNullOrEmpty()) {
-        url = "https://api.themoviedb.org/3/search/$type?api_key=$apiKey&query=$encodedTitle"
-        response = app.get(url).parsed<TmdbSearchResponse>()
-    }
-    
-    val result = response.results?.firstOrNull()?.id?.toString()
-    throw Exception("TMDB result=$result for title=$title")
-}
 
-  data class TmdbSearchResponse(
-    val results: List<TmdbResult>? = null
-  )
-
-  data class TmdbResult(
-    val id: Int? = null
-  )
 
   override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
     cookie_value = if (cookie_value.isEmpty()) bypass(newUrl) else cookie_value
@@ -239,52 +214,17 @@ class NetflixMirrorProvider : MainAPI() {
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
-  ): Boolean {
-    val loadData = parseJson<LoadData>(data)
-    val tmdbId = loadData.tmdbId ?: return false
+): Boolean {
+    val apiBase = resolveApiUrl()
+    val id = parseJson<LoadData>(data).id
 
-    val apiUrl = if (loadData.season == null) {
-      "https://net27.cc/api/embed-tmdb/$tmdbId"
-    } else {
-      "https://net27.cc/api/embed-tmdb/$tmdbId?type=tv&s=${loadData.season}&e=${loadData.episode}"
-    }
+    val rawResponse = app.get(
+        "$apiBase/newtv/player.php?id=$id",
+        headers = buildNewTvHeaders("nf", mapOf("Usertoken" to ""))
+    ).text
 
-    val response = app.get(apiUrl, headers = net27Headers).parsed<Net27Response>()
-    if (response.ok != true) return false
-
-    response.streams?.forEach {
-      stream ->
-      callback.invoke(
-        newExtractorLink(
-          name,
-          "$name ${stream.resolution}p",
-          stream.url,
-          type = ExtractorLinkType.VIDEO
-        ) {
-          this.referer = "https://videodownloader.site/"
-          this.quality = stream.resolution
-        }
-      )
-    }
-
-    if (response.streams.isNullOrEmpty()) {
-      val mp4 = response.mp4 ?: return false
-      callback.invoke(
-        newExtractorLink(name, name, mp4, type = ExtractorLinkType.VIDEO) {
-          this.referer = "https://videodownloader.site/"
-        }
-      )
-    }
-
-    response.captions?.forEach {
-      caption ->
-      subtitleCallback.invoke(
-        SubtitleFile(caption.name, "https://net27.cc${caption.url}")
-      )
-    }
-
-    return true
-  }
+    throw Exception("RAW: $rawResponse")
+}
 
   @Suppress("ObjectLiteralToLambda")
   override fun getVideoInterceptor(extractorLink: ExtractorLink): Interceptor? {
@@ -304,9 +244,6 @@ class NetflixMirrorProvider : MainAPI() {
   data class LoadData(
     val title: String,
     val id: String,
-    val tmdbId: String? = null,
-    val season: Int? = null,
-    val episode: Int? = null
   )
 
   data class Net27Response(
