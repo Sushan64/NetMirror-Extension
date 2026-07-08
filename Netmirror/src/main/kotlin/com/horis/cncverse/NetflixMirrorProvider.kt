@@ -196,17 +196,23 @@ class NetflixMirrorProvider : MainAPI() {
     val apiBase = try {
         resolveApiUrl()
     } catch (e: Exception) {
-        throw Exception("resolveApiUrl failed: ${e.message}")
+        // resolveApiUrl failed, use fallback
+        callback.invoke(
+            newExtractorLink(name, "DEBUG: resolveApiUrl failed: ${e.message}", "https://test.com", type = ExtractorLinkType.VIDEO) {}
+        )
+        return true
     }
-    
-    val id = parseJson<LoadData>(data).id
 
+    val id = parseJson<LoadData>(data).id
     val rawResponse = app.get(
         "$apiBase/newtv/player.php?id=$id",
         headers = buildNewTvHeaders("nf", mapOf("Usertoken" to ""))
     ).text
 
-    throw Exception("RAW: $rawResponse")
+    callback.invoke(
+        newExtractorLink(name, "DEBUG: $rawResponse", "https://test.com", type = ExtractorLinkType.VIDEO) {}
+    )
+    return true
 }
 
 
