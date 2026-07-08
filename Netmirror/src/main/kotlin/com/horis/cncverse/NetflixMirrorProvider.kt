@@ -10,6 +10,7 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.APIHolder.unixTime
+import com.lagradost.api.Log
 
 class NetflixMirrorProvider : MainAPI() {
 
@@ -139,7 +140,7 @@ class NetflixMirrorProvider : MainAPI() {
 
     val isMovie = data.episodes.isEmpty() || data.episodes.first() == null
     val tmdbId = fetchTmdbId(title, data.year, isMovie)
-    
+    Log.d("NetMirror", "fetched tmdbId=$tmdbId for title=$title year=${data.year}")
     if (isMovie) {
       episodes.add(newEpisode(LoadData(title, id, tmdbId)) {
         name = title
