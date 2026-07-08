@@ -50,16 +50,21 @@ class NetflixMirrorProvider : MainAPI() {
 
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
-        getCookie()
-        val document = app.get(
-            "$mainUrl/mobile/home?app=1",
-            cookies = siteCookies(),
-            headers = siteHeaders,
-            referer = "$mainUrl/mobile/home?app=1"
-        ).document
-        val items = document.select(".tray-container, #top10").map { it.toHomePageList() }
-        return newHomePageResponse(items, false)
-    }
+    cookie_value = if(cookie_value.isEmpty()) bypass(newUrl) else cookie_value
+    val cookies = mapOf(
+        "t_hash_t" to cookie_value,
+        "ott" to "nf",
+        "hd" to "on"
+    )
+    val document = app.get(
+        "$mainUrl/mobile/home?app=1",
+        cookies = cookies,
+        headers = siteHeaders,
+        referer = "$mainUrl/mobile/home?app=1"
+    ).document
+    val items = document.select(".tray-container, #top10").map { it.toHomePageList() }
+    return newHomePageResponse(items, false)
+}
 
     private fun Element.toHomePageList(): HomePageList {
         val name = select("h2, span").text()
