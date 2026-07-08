@@ -35,6 +35,7 @@ class NetflixMirrorProvider : MainAPI() {
 
   override var mainUrl = "https://net52.cc"
   private var newUrl = "https://net77.cc"
+  
   override var name = "Netflix"
 
   override val hasMainPage = true
@@ -58,7 +59,7 @@ class NetflixMirrorProvider : MainAPI() {
 
   override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
 
-    cookie_value = if (cookie_value.isEmpty()) bypass(mainUrl) else cookie_value
+    cookie_value = if (cookie_value.isEmpty()) bypass(newUrl) else cookie_value
     val cookies = mapOf(
       "t_hash_t" to cookie_value,
       "ott" to "nf",
@@ -97,7 +98,7 @@ class NetflixMirrorProvider : MainAPI() {
 
   override suspend fun search(query: String): List<SearchResponse> {
 
-    cookie_value = if (cookie_value.isEmpty()) bypass(mainUrl) else cookie_value
+    cookie_value = if (cookie_value.isEmpty()) bypass(newUrl) else cookie_value
     val cookies = mapOf(
       "t_hash_t" to cookie_value,
       "hd" to "on",
@@ -115,7 +116,7 @@ class NetflixMirrorProvider : MainAPI() {
   }
 
   override suspend fun load(url: String): LoadResponse? {
-    cookie_value = if (cookie_value.isEmpty()) bypass(mainUrl) else cookie_value
+    cookie_value = if (cookie_value.isEmpty()) bypass(newUrl) else cookie_value
     val id = parseJson<Id>(url).id
     val cookies = mapOf(
       "t_hash_t" to cookie_value,
@@ -232,36 +233,21 @@ class NetflixMirrorProvider : MainAPI() {
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
   ): Boolean {
-    val loadData = parseJson<LoadData>(data)
-    val id = loadData.id
-    val title = loadData.title
-    val cookies = mapOf(
-      "t_hash_t" to cookie_value,
-      "hd" to "on",
-      "ott" to "nf"
-    )
+    val apiBase = resolveApiUrl()
+    val id = parseJson<LoadData>(data).id
+    val response = app.get(
+      "$apiBase/newtv/player.php?id=$id",
+      headers = buildNewTvHeaders("nf", mapOf("Usertoken" to ""))
+    ).parsed<NewTvPlayerResponse>()
 
-    val playerDoc = app.post(
-      "$newUrl/play.php",
-      headers = headers,
-      cookies = cookies,
-      data = mapOf("id" to id)
-    ).document
-
-    val body = playerDoc.selectFirst("body") ?: return false
-    val h = body.attr("data-h")
-    val tm = body.attr("data-time")
-
-    if (h.isBlank() || tm.isBlank()) return false
-
-    val encodedTitle = java.net.URLEncoder.encode(title, "UTF-8")
-    val playlistUrl = "$newUrl/playlist.php?id=$id&t=$encodedTitle&tm=$tm&h=$h"
+    if (response.status != "ok" || response.video_link.isNullOrBlank()) return false
 
     callback.invoke(
-      newExtractorLink(name, name, playlistUrl, type = ExtractorLinkType.M3U8) {
-        this.referer = "$newUrl/"
+      newExtractorLink(name, name, response.video_link, type = ExtractorLinkType.M3U8) {
+        this.referer = response.referer ?: apiBase
       }
     )
+
     return true
   }
 
@@ -269,14 +255,19 @@ class NetflixMirrorProvider : MainAPI() {
   override fun getVideoInterceptor(extractorLink: ExtractorLink): Interceptor? {
     return object : Interceptor {
       override fun intercept(chain: Interceptor.Chain): Response {
-        val request = chain.request().newBuilder()
-        .header("Referer", "$newUrl/")
-        .header("Cookie", "t_hash_t=$cookie_value; hd=on; ott=nf")
-        .build()
+        val request = chain.request()
+        if (request.url.toString().contains(".m3u8")) {
+          val newRequest = request.newBuilder()
+          .header("Cookie", "hd=on")
+          .build()
+          return chain.proceed(newRequest)
+        }
         return chain.proceed(request)
       }
     }
   }
+
+
   data class Id(
     val id: String
   )

@@ -98,7 +98,7 @@ suspend fun bypass(mainUrl: String): String {
             "Cache-Control" to "max-age=0",
             "Connection" to "keep-alive",
             "Content-Type" to "application/x-www-form-urlencoded",
-            "Origin" to "https://net52.cc",
+            "Origin" to "https://net77.cc",
             "Referer" to "https://net77.cc/verify2",
             "sec-ch-ua" to "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
             "sec-ch-ua-mobile" to "?0",
@@ -111,14 +111,14 @@ suspend fun bypass(mainUrl: String): String {
             "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
         )
         val formBody = FormBody.Builder()
-            .add("g-recaptcha-response", UUID.randomUUID().toString())
+            .add("cf-turnstile-response", UUID.randomUUID().toString())
             .build()
         val client = app.baseClient.newBuilder()
             .followRedirects(false)
             .followSslRedirects(false)
             .build()
         val request = Request.Builder()
-            .url("https://net52.cc/verify.php")
+            .url("https://net77.cc/verify.php")
             .post(formBody)
             .apply {
                 headers.forEach { (key, value) ->
