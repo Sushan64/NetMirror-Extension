@@ -193,14 +193,15 @@ class NetflixMirrorProvider : MainAPI() {
         val loadData = parseJson<LoadData>(data)
         val isMovie = loadData.season == null
 
-        // Search TMDB for ID using title
-        val type = if (isMovie) "movie" else "tv"
-        val encodedTitle = java.net.URLEncoder.encode(loadData.title, "UTF-8")
-        val tmdbSearch = app.get(
-            "https://api.themoviedb.org/3/search/$type?api_key=8d6d91941230817f7807d643736f8f3e&query=$encodedTitle",
-            headers = net27Headers
-        ).parsed<TmdbSearch>()
-        val tmdbId = tmdbSearch.results?.firstOrNull()?.id?.toString() ?: return false
+        // Use CloudStream's built-in TMDB tracker
+        val trackerType = if (isMovie) TrackerType.TMDB_ID else TrackerType.TMDB_ID
+        val trackerInfo = APIHolder.getTracker(
+            loadData.title,
+            trackerType,
+            null,
+            isMovie
+        )
+        val tmdbId = trackerInfo?.id ?: return false
 
         // Get variants
         val variantsUrl = if (isMovie) {
@@ -277,9 +278,6 @@ class NetflixMirrorProvider : MainAPI() {
         val season: Int? = null,
         val episode: Int? = null
     )
-
-    data class TmdbSearch(val results: List<TmdbResult>? = null)
-    data class TmdbResult(val id: Int? = null)
 
     data class Net27VariantsResponse(
         val ok: Boolean? = null,
