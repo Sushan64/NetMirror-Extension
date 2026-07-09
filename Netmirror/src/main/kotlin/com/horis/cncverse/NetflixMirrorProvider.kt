@@ -104,17 +104,18 @@ class NetflixMirrorProvider : MainAPI() {
         ).parsed<PostData>()
 
         val title = data.title
+        val tmdbId = data.tmdb_id
         val episodes = arrayListOf<Episode>()
         val isMovie = data.episodes.isEmpty() || data.episodes.first() == null
 
         if (isMovie) {
-            episodes.add(newEpisode(LoadData(title, id)) {
+            episodes.add(newEpisode(LoadData(title, id, tmdbId)) {
                 name = title
             })
         } else {
             data.episodes.filterNotNull().mapTo(episodes) {
                 newEpisode(LoadData(
-                    title, it.id,
+                    title, it.id, tmdbId,
                     it.s.replace("S", "").toIntOrNull(),
                     it.ep.replace("E", "").toIntOrNull()
                 )) {
@@ -126,10 +127,10 @@ class NetflixMirrorProvider : MainAPI() {
                 }
             }
             if (data.nextPageShow == 1) {
-                episodes.addAll(getEpisodes(title, url, data.nextPageSeason!!, 2))
+                episodes.addAll(getEpisodes(title, url, data.nextPageSeason!!, 2, tmdbId))
             }
             data.season?.dropLast(1)?.amap {
-                episodes.addAll(getEpisodes(title, url, it.id, 1))
+                episodes.addAll(getEpisodes(title, url, it.id, 1, tmdbId))
             }
         }
 
@@ -153,7 +154,7 @@ class NetflixMirrorProvider : MainAPI() {
     }
 
     private suspend fun getEpisodes(
-        title: String, eid: String, sid: String, page: Int
+        title: String, eid: String, sid: String, page: Int, tmdbId: String?
     ): List<Episode> {
         val episodes = arrayListOf<Episode>()
         val cookies = mapOf("t_hash_t" to cookie_value, "hd" to "on", "ott" to "nf")
@@ -167,7 +168,7 @@ class NetflixMirrorProvider : MainAPI() {
             ).parsed<EpisodesData>()
             data.episodes?.mapTo(episodes) {
                 newEpisode(LoadData(
-                    title, it.id,
+                    title, it.id, tmdbId,
                     it.s.replace("S", "").toIntOrNull(),
                     it.ep.replace("E", "").toIntOrNull()
                 )) {
@@ -185,64 +186,64 @@ class NetflixMirrorProvider : MainAPI() {
     }
 
     override suspend fun loadLinks(
-    data: String,
-    isCasting: Boolean,
-    subtitleCallback: (SubtitleFile) -> Unit,
-    callback: (ExtractorLink) -> Unit
-): Boolean {
-    val loadData = parseJson<LoadData>(data)
-    val isMovie = loadData.season == null
-    val tmdbId = loadData.tmdbId ?: return false
+        data: String,
+        isCasting: Boolean,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ): Boolean {
+        val loadData = parseJson<LoadData>(data)
+        val tmdbId = loadData.tmdbId ?: return false
+        val isMovie = loadData.season == null
 
-    val variantsUrl = if (isMovie) {
-        "$net27Url/api/variants-tmdb/movie/$tmdbId"
-    } else {
-        "$net27Url/api/variants-tmdb/tv/$tmdbId?se=${loadData.season}&ep=${loadData.episode ?: 1}"
+        val variantsUrl = if (isMovie) {
+            "$net27Url/api/variants-tmdb/movie/$tmdbId"
+        } else {
+            "$net27Url/api/variants-tmdb/tv/$tmdbId?se=${loadData.season}&ep=${loadData.episode ?: 1}"
+        }
+
+        val variants = try {
+            app.get(variantsUrl, headers = net27Headers).parsed<Net27VariantsResponse>()
+        } catch (e: Exception) { Net27VariantsResponse() }
+
+        val hasSid = variants.ok == true && variants.defaultSubjectId != null
+        val embedUrl = if (isMovie) {
+            if (hasSid) "$net27Url/api/embed-tmdb/$tmdbId?type=movie&sid=${variants.defaultSubjectId}&dp=${variants.defaultDetailPath}"
+            else "$net27Url/api/embed-tmdb/$tmdbId?type=movie"
+        } else {
+            val se = loadData.season ?: 1
+            val ep = loadData.episode ?: 1
+            if (hasSid) "$net27Url/api/embed-tmdb/$tmdbId?type=tv&se=$se&ep=$ep&sid=${variants.defaultSubjectId}&dp=${variants.defaultDetailPath}"
+            else "$net27Url/api/embed-tmdb/$tmdbId?type=tv&se=$se&ep=$ep"
+        }
+
+        val response = app.get(embedUrl, headers = net27Headers).parsed<Net27Response>()
+        if (response.ok != true || (response.mp4.isNullOrBlank() && response.streams.isNullOrEmpty())) return false
+
+        response.streams?.sortedByDescending { it.resolution }?.forEach { stream ->
+            callback.invoke(
+                newExtractorLink(name, "$name ${stream.resolution}p", stream.url, type = ExtractorLinkType.VIDEO) {
+                    this.referer = "$net27Url/"
+                    this.quality = stream.resolution
+                }
+            )
+        }
+
+        if (response.streams.isNullOrEmpty()) {
+            val mp4 = response.mp4 ?: return false
+            callback.invoke(
+                newExtractorLink(name, name, mp4, type = ExtractorLinkType.VIDEO) {
+                    this.referer = "$net27Url/"
+                }
+            )
+        }
+
+        response.captions?.forEach { caption ->
+            val subUrl = if (caption.url.startsWith("/")) "$net27Url${caption.url}" else caption.url
+            subtitleCallback.invoke(SubtitleFile(caption.name, subUrl))
+        }
+
+        return true
     }
-
-    val variants = try {
-        app.get(variantsUrl, headers = net27Headers).parsed<Net27VariantsResponse>()
-    } catch (e: Exception) { Net27VariantsResponse() }
-
-    val hasSid = variants.ok == true && variants.defaultSubjectId != null
-    val embedUrl = if (isMovie) {
-        if (hasSid) "$net27Url/api/embed-tmdb/$tmdbId?type=movie&sid=${variants.defaultSubjectId}&dp=${variants.defaultDetailPath}"
-        else "$net27Url/api/embed-tmdb/$tmdbId?type=movie"
-    } else {
-        val se = loadData.season ?: 1
-        val ep = loadData.episode ?: 1
-        if (hasSid) "$net27Url/api/embed-tmdb/$tmdbId?type=tv&se=$se&ep=$ep&sid=${variants.defaultSubjectId}&dp=${variants.defaultDetailPath}"
-        else "$net27Url/api/embed-tmdb/$tmdbId?type=tv&se=$se&ep=$ep"
-    }
-
-    val response = app.get(embedUrl, headers = net27Headers).parsed<Net27Response>()
-    if (response.ok != true || (response.mp4.isNullOrBlank() && response.streams.isNullOrEmpty())) return false
-
-    response.streams?.sortedByDescending { it.resolution }?.forEach { stream ->
-        callback.invoke(
-            newExtractorLink(name, "$name ${stream.resolution}p", stream.url, type = ExtractorLinkType.VIDEO) {
-                this.referer = "$net27Url/"
-                this.quality = stream.resolution
-            }
-        )
-    }
-
-    if (response.streams.isNullOrEmpty()) {
-        val mp4 = response.mp4 ?: return false
-        callback.invoke(
-            newExtractorLink(name, name, mp4, type = ExtractorLinkType.VIDEO) {
-                this.referer = "$net27Url/"
-            }
-        )
-    }
-
-    response.captions?.forEach { caption ->
-        val subUrl = if (caption.url.startsWith("/")) "$net27Url${caption.url}" else caption.url
-        subtitleCallback.invoke(SubtitleFile(caption.name, subUrl))
-    }
-
-    return true
-}
 
     @Suppress("ObjectLiteralToLambda")
     override fun getVideoInterceptor(extractorLink: ExtractorLink): Interceptor? {
@@ -262,6 +263,7 @@ class NetflixMirrorProvider : MainAPI() {
     data class LoadData(
         val title: String,
         val id: String,
+        val tmdbId: String? = null,
         val season: Int? = null,
         val episode: Int? = null
     )
