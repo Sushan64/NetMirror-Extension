@@ -50,6 +50,8 @@ jobs:
           MOVIEBOX_SECRET_KEY_ALT: ${{ secrets.MOVIEBOX_SECRET_KEY_ALT }}
           CASTLE_SUFFIX: ${{ secrets.CASTLE_SUFFIX }}
           CRICIFY_PROVIDER_SECRET: ${{ secrets.CRICIFY_PROVIDER_SECRET }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_URL: ${{ secrets.TMDB_URL }}
         run: |
           cd src
           chmod +x gradlew
