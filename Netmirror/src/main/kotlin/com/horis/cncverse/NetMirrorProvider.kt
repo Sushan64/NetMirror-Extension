@@ -222,7 +222,7 @@ class NetMirrorProvider : MainAPI() {
 
         response.streams?.sortedByDescending { it.resolution }?.forEach { stream ->
             callback.invoke(
-                newExtractorLink(name, "$name $audioLang ${stream.resolution}p", stream.url, type = ExtractorLinkType.VIDEO) {
+                newExtractorLink(name, "$name $audioLang", stream.url, type = ExtractorLinkType.VIDEO) {
                     this.referer = "https://videodownloader.site/"
                     this.quality = stream.resolution
                 }
@@ -234,7 +234,7 @@ class NetMirrorProvider : MainAPI() {
             if (!mp4.isNullOrBlank()) {
                 val resolution = response.resolution?.toString() ?: "Unknown"
                 callback.invoke(
-                    newExtractorLink(name, "$name $audioLang ${resolution}p", mp4, type = ExtractorLinkType.VIDEO) {
+                    newExtractorLink(name, "$name $audioLang", mp4, type = ExtractorLinkType.VIDEO) {
                         this.referer = "https://videodownloader.site/"
                     }
                 )
