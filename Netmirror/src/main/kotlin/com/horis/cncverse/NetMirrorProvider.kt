@@ -223,7 +223,7 @@ class NetMirrorProvider : MainAPI() {
         response.streams?.sortedByDescending { it.resolution }?.forEach { stream ->
             callback.invoke(
                 newExtractorLink(name, "$name $audioLang ${stream.resolution}p", stream.url, type = ExtractorLinkType.VIDEO) {
-                    this.referer = "$net27Url/"
+                    this.referer = "https://videodownloader.site/"
                     this.quality = stream.resolution
                 }
             )
@@ -235,7 +235,7 @@ class NetMirrorProvider : MainAPI() {
                 val resolution = response.resolution?.toString() ?: "Unknown"
                 callback.invoke(
                     newExtractorLink(name, "$name $audioLang ${resolution}p", mp4, type = ExtractorLinkType.VIDEO) {
-                        this.referer = "$net27Url/"
+                        this.referer = "https://videodownloader.site/"
                     }
                 )
             }
@@ -253,7 +253,7 @@ class NetMirrorProvider : MainAPI() {
         return object : Interceptor {
             override fun intercept(chain: Interceptor.Chain): Response {
                 val request = chain.request().newBuilder()
-                    .header("Referer", "$net27Url/")
+                    .header("Referer", "https://videodownloader.site/")
                     .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36")
                     .build()
                 return chain.proceed(request)
