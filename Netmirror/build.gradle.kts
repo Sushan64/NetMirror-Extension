@@ -18,7 +18,7 @@ cloudstream {
     // All of these properties are optional, you can safely remove them
 
     description = "Netflix, PrimeVideo, Disney+ Hotstar Contents in Multiple Languages"
-    authors = listOf("Sushan64")
+    authors = listOf("nirmaleeswar30")
 
     /**
      * Status int as the following:
@@ -33,5 +33,5 @@ cloudstream {
         "TvSeries"
     )
 
-    iconUrl = "https://raw.githubusercontent.com/Sushan64/NetMirror-Extension/refs/heads/master/Netmirror/logo.jpeg"
+    iconUrl = "https://raw.githubusercontent.com/nirmaleeswar30/NetMirror-Extension/refs/heads/master/Netmirror/logo.jpeg"
 }
