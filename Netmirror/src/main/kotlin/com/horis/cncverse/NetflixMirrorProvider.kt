@@ -2,7 +2,6 @@ package com.horis.cncverse
 
 import android.content.Context
 import com.horis.cncverse.entities.SearchResult
-import com.horis.cncverse.entities.Suggest
 import com.horis.cncverse.entities.Season
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
@@ -21,6 +20,15 @@ class NetflixMirrorProvider : MainAPI() {
     override val hasMainPage = true
 
     private val ott = "nf"
+
+    private fun buildPosterUrl(template: String?, id: String): String? {
+        if (template.isNullOrBlank()) return null
+        return if (template.contains("------------------")) {
+            template.replace("------------------", id)
+        } else {
+            "${template.trimEnd('/')}/$id.jpg"
+        }
+    }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
         val apiBase = resolveApiUrl()
@@ -211,6 +219,7 @@ class NetflixMirrorProvider : MainAPI() {
 
     private data class NewTvId(val id: String)
     private data class NewTvLoadData(val title: String, val id: String)
+    private data class Suggest(val id: String)
     private data class NewTvMainResponse(
         val post: List<NewTvPostCategory>? = null,
         val imgcdn_h: String? = null,
