@@ -12,7 +12,10 @@ set DIRNAME=%~dp0
 if "%DIRNAME%" == "" set DIRNAME=.
 set APP_BASE_NAME=%~n0
 set APP_HOME=%DIRNAME%
-set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
+if "%JAVA_HOME%" == "" (
+    if exist "C:\Program Files\Java\jdk-17" set "JAVA_HOME=C:\Program Files\Java\jdk-17"
+    if exist "C:\Program Files\Android\Android Studio\jbr" set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
+)
 
 @rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 set DEFAULT_JVM_OPTS=
